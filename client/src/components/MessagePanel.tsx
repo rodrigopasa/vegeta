@@ -498,11 +498,14 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="w-96 bg-white border-l border-gray-200 flex flex-col h-screen overflow-hidden">
-      <div className="p-4 border-b border-gray-200 flex justify-between items-center flex-shrink-0">
-        <h3 className="font-medium">Nova mensagem</h3>
+    <div className="w-96 bg-gradient-to-b from-white to-[#f7f9fc] border-l border-gray-200 flex flex-col h-screen overflow-hidden shadow-xl">
+      <div className="p-4 bg-[hsl(var(--whatsapp-light-green))] text-white border-b border-[hsl(var(--whatsapp-green))/30] flex justify-between items-center flex-shrink-0">
+        <h3 className="font-semibold text-lg flex items-center">
+          <MessageCircle className="mr-2 h-5 w-5" />
+          Nova mensagem
+        </h3>
         <button 
-          className="text-gray-500 hover:text-gray-700"
+          className="text-white hover:bg-[hsl(var(--whatsapp-dark-green))/20] rounded-full p-1.5 transition-colors"
           onClick={onClose}
         >
           <X size={18} />
