@@ -108,6 +108,7 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
     setMediaName('');
     setMediaCaption('');
     setIsUploading(false);
+    setUploadError(null);
     
     // Common fields
     setMessage('');
@@ -263,14 +264,14 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
       return;
     }
     
+    setUploadError(null);
     setMediaFile(file);
     setMediaName(file.name);
     setMediaType(file.type);
     setHasMedia(true);
+    setIsUploading(true);
     
     try {
-      setIsUploading(true);
-      
       // Create a FormData object to send the file
       const formData = new FormData();
       formData.append('file', file);
@@ -282,7 +283,7 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
       });
       
       if (!response.ok) {
-        throw new Error('Failed to upload file');
+        throw new Error('Falha ao carregar o arquivo para o servidor');
       }
       
       const data = await response.json();
@@ -294,6 +295,8 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
       });
     } catch (error) {
       console.error('Error uploading file:', error);
+      setUploadError(error instanceof Error ? error.message : "Erro desconhecido ao anexar arquivo");
+      
       toast({
         title: "Erro ao anexar arquivo",
         description: "Não foi possível anexar o arquivo. Tente novamente.",
@@ -495,7 +498,7 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="w-96 bg-white border-l border-gray-200 flex flex-col flex-shrink-0">
+    <div className="w-96 bg-white border-l border-gray-200 flex flex-col flex-shrink-0 overflow-y-auto">
       <div className="p-4 border-b border-gray-200 flex justify-between items-center">
         <h3 className="font-medium">Nova mensagem</h3>
         <button 
@@ -795,55 +798,65 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
           )}
         </div>
         
-        {hasMedia && mediaFile ? (
-          <div className="border rounded-md p-3 mb-3">
-            <div className="flex items-center">
-              <Paperclip className="h-5 w-5 text-gray-500 mr-2" />
-              <div className="overflow-hidden">
-                <p className="font-medium text-sm truncate">{mediaName}</p>
-                <p className="text-xs text-gray-500">{(mediaFile.size / 1024).toFixed(1)} KB</p>
+        <div className="media-attachment-container">
+          {hasMedia && mediaFile ? (
+            <div className="border rounded-md p-3 mb-3">
+              <div className="flex items-center">
+                <Paperclip className="h-5 w-5 text-gray-500 mr-2" />
+                <div className="overflow-hidden">
+                  <p className="font-medium text-sm truncate">{mediaName}</p>
+                  <p className="text-xs text-gray-500">{(mediaFile.size / 1024).toFixed(1)} KB</p>
+                </div>
+                {isUploading && (
+                  <Spinner className="ml-auto h-4 w-4" />
+                )}
               </div>
-              {isUploading && (
-                <Spinner className="ml-auto h-4 w-4" />
+              {mediaPath && (
+                <div className="mt-2">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Legenda (opcional)
+                  </label>
+                  <Input 
+                    type="text"
+                    placeholder="Digite uma legenda para o arquivo..."
+                    value={mediaCaption || ''}
+                    onChange={(e) => setMediaCaption(e.target.value)}
+                    className="text-sm"
+                  />
+                </div>
               )}
             </div>
-            {mediaPath && (
-              <div className="mt-2">
-                <label className="block text-xs font-medium text-gray-700 mb-1">
-                  Legenda (opcional)
-                </label>
-                <Input 
-                  type="text"
-                  placeholder="Digite uma legenda para o arquivo..."
-                  value={mediaCaption || ''}
-                  onChange={(e) => setMediaCaption(e.target.value)}
-                  className="text-sm"
-                />
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="border-2 border-dashed rounded-md p-3 text-center">
-            <input 
-              type="file"
-              ref={mediaInputRef}
-              className="hidden"
-              accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.jpg,.jpeg,.png"
-              onChange={handleMediaFileSelect}
-            />
-            <Button
-              variant="outline"
-              onClick={() => mediaInputRef.current?.click()}
-              className="w-full"
-              disabled={isUploading}
-            >
-              <Upload className="h-4 w-4 mr-2" />
-              Selecionar arquivo
-            </Button>
-            <p className="text-xs text-gray-500 mt-2">
-              Tipos permitidos: PDF, Word, Excel, imagens
-            </p>
-          </div>
+          ) : (
+            <div className="border-2 border-dashed rounded-md p-3 text-center">
+              <input 
+                type="file"
+                ref={mediaInputRef}
+                className="hidden"
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.jpg,.jpeg,.png"
+                onChange={handleMediaFileSelect}
+              />
+              <Button
+                variant="outline"
+                onClick={() => mediaInputRef.current?.click()}
+                className="w-full"
+                disabled={isUploading}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Selecionar arquivo
+              </Button>
+              <p className="text-xs text-gray-500 mt-2">
+                Tipos permitidos: PDF, Word, Excel, imagens
+              </p>
+            </div>
+          )}
+        </div>
+        
+        {uploadError && (
+          <Alert variant="destructive" className="mt-2">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Erro ao anexar arquivo</AlertTitle>
+            <AlertDescription>{uploadError}</AlertDescription>
+          </Alert>
         )}
       </div>
       
