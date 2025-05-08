@@ -1,4 +1,4 @@
-import React, { useRef, useState, ChangeEvent } from 'react';
+import React, { useRef, useState, ChangeEvent, useEffect, memo } from 'react';
 import { Paperclip, Loader, CheckCircle, AlertCircle, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,7 +17,7 @@ interface FileUploaderProps {
   }) => void;
 }
 
-export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded }) => {
+export const FileUploader: React.FC<FileUploaderProps> = memo(({ onFileUploaded }) => {
   const { toast } = useToast();
   const mediaInputRef = useRef<HTMLInputElement>(null);
   
@@ -30,6 +30,66 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded }) =>
   const [mediaCaption, setMediaCaption] = useState<string>('');
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadId] = useState<string>(Math.random().toString(36).substring(2, 10));
+
+  // Usar useEffect para persistir o estado em um armazenamento local
+  useEffect(() => {
+    if (hasMedia && mediaFile && mediaPath) {
+      // Salvar estado no sessionStorage para persistir entre renderizações
+      const stateToSave = {
+        hasMedia,
+        mediaName,
+        mediaType,
+        mediaPath,
+        mediaCaption,
+        fileSize: mediaFile ? mediaFile.size : 0
+      };
+      
+      try {
+        sessionStorage.setItem(`fileUploader-${uploadId}`, JSON.stringify(stateToSave));
+      } catch (error) {
+        console.error('Error saving state to sessionStorage:', error);
+      }
+    }
+  }, [hasMedia, mediaName, mediaType, mediaPath, mediaCaption, mediaFile, uploadId]);
+  
+  // Recuperar estado do sessionStorage na montagem do componente
+  useEffect(() => {
+    try {
+      const savedState = sessionStorage.getItem(`fileUploader-${uploadId}`);
+      if (savedState) {
+        const parsedState = JSON.parse(savedState);
+        
+        if (parsedState.hasMedia && parsedState.mediaPath) {
+          // Restaurar apenas o estado necessário
+          setHasMedia(parsedState.hasMedia);
+          setMediaName(parsedState.mediaName);
+          setMediaType(parsedState.mediaType);
+          setMediaPath(parsedState.mediaPath);
+          setMediaCaption(parsedState.mediaCaption || '');
+          
+          // Não podemos restaurar o objeto File diretamente, 
+          // mas podemos criar um placeholder para fins de UI
+          const dummyFile = new File([], parsedState.mediaName, {
+            type: parsedState.mediaType
+          });
+          setMediaFile(dummyFile);
+          
+          // Notificar o componente pai
+          onFileUploaded({
+            hasMedia: parsedState.hasMedia,
+            mediaFile: dummyFile,
+            mediaType: parsedState.mediaType,
+            mediaPath: parsedState.mediaPath,
+            mediaName: parsedState.mediaName,
+            mediaCaption: parsedState.mediaCaption || ''
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error loading state from sessionStorage:', error);
+    }
+  }, [onFileUploaded, uploadId]);
 
   // Limpar o estado
   const clearFileState = () => {
@@ -40,6 +100,13 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded }) =>
     setMediaName('');
     setMediaCaption('');
     setUploadError(null);
+    
+    // Limpar também do sessionStorage
+    try {
+      sessionStorage.removeItem(`fileUploader-${uploadId}`);
+    } catch (error) {
+      console.error('Error removing state from sessionStorage:', error);
+    }
     
     // Notificar o componente pai
     onFileUploaded({
@@ -180,7 +247,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded }) =>
         )}
       </div>
       
-      <div className="media-attachment-container min-h-[150px] relative" id="file-uploader">
+      <div className="media-attachment-container min-h-[150px] relative" id={`file-uploader-${uploadId}`}>
         {(hasMedia && mediaFile) ? (
           <div className="border rounded-md p-3 bg-[hsl(var(--whatsapp-light-green))/5] border-[hsl(var(--whatsapp-light-green))/20]">
             <div className="flex items-center">
@@ -259,6 +326,6 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded }) =>
       )}
     </div>
   );
-};
+});
 
 export default FileUploader;
