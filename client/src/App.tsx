@@ -13,7 +13,7 @@ import History from "@/pages/History";
 import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth-page";
 import { WhatsAppProvider } from "@/contexts/WhatsAppContext";
-import { AuthProvider } from "@/hooks/use-auth";
+import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { useEffect, useState } from "react";
 import Notification from "@/components/Notification";

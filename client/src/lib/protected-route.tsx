@@ -1,4 +1,4 @@
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "../hooks/use-auth";
 import { Spinner } from "@/components/Spinner";
 import { Redirect, Route } from "wouter";
 
