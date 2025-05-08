@@ -12,32 +12,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Configurar autenticação
   setupAuth(app);
   
-  // Middleware para proteger rotas
-  app.use((req: Request, res: Response, next: NextFunction) => {
+  // Os endpoints da API devem ser protegidos mas retornar 401 em vez de redirecionar
+  app.use('/api', (req: Request, res: Response, next: NextFunction) => {
     // Lista de rotas públicas que não precisam de autenticação
     const publicRoutes = [
       '/api/login', 
       '/api/register', 
       '/api/users/count', 
-      '/api/user',
-      '/static-login.html'
+      '/api/user'
     ];
     
     // Verifica se é uma rota pública ou se está autenticado
-    if (
-      publicRoutes.includes(req.path) || 
-      req.path.startsWith('/assets') || 
-      req.path.endsWith('.js') || 
-      req.path.endsWith('.css') || 
-      req.path.endsWith('.ico') || 
-      req.path === '/' || 
-      req.isAuthenticated()
-    ) {
+    if (publicRoutes.includes(req.path) || req.isAuthenticated()) {
       return next();
     }
     
-    // Redireciona para a página de login estática
-    res.redirect('/static-login.html');
+    // Retorna 401 para APIs não autenticadas
+    res.status(401).json({ error: 'Unauthorized' });
   });
 
   // Rota para verificar a contagem de usuários
@@ -85,25 +76,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.sendFile("static-login.html", { root: "./client" });
   });
   
-  // Rota para raiz - Se não houver usuários, redirecionar para página de login estática
-  app.get("/", async (req: Request, res: Response, next: NextFunction) => {
-    if (!req.isAuthenticated()) {
-      try {
-        const count = await storage.getUserCount();
-        if (count === 0) {
-          // Não há usuários, mostrar página de criação de conta
-          return res.redirect('/static-login.html');
-        } else {
-          // Há usuários, mas não está autenticado, mostrar página de login
-          return res.redirect('/static-login.html');
-        }
-      } catch (error) {
-        console.error("Erro ao verificar usuários:", error);
-        return res.redirect('/static-login.html');
-      }
+  // Substituir o comportamento do middleware de proteção de rotas
+  // para redirecionar para a página estática em vez de retornar erro 401
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    // Se a rota já foi processada ou é pública, ou o usuário está autenticado
+    if (req.path === '/static-login.html' || 
+        req.path.startsWith('/api/') || 
+        req.path.endsWith('.js') || 
+        req.path.endsWith('.css') ||
+        req.path.endsWith('.svg') ||
+        req.path.endsWith('.png') ||
+        req.path.endsWith('.ico') ||
+        req.isAuthenticated()) {
+      return next();
     }
-    // Se estiver autenticado, continuar com o frontend normal
-    next();
+    
+    // Redirecionar para a página de login estática
+    return res.redirect('/static-login.html');
   });
 
   const httpServer = createServer(app);
