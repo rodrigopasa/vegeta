@@ -1,6 +1,6 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
+import { storage as dbStorage } from "./storage";
 import { whatsAppService } from "./whatsapp";
 import { messageWithValidationSchema, insertUserSchema } from "@shared/schema";
 import { ZodError } from "zod";
@@ -8,6 +8,58 @@ import { fromZodError } from "zod-validation-error";
 import passport from "passport";
 import { setupAuth, hashPassword } from "./auth";
 import { pool } from "./db";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+
+// Configurar o armazenamento de arquivos com Multer
+const uploadStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    // Verifica se o diretório de uploads existe, se não, cria
+    const uploadDir = './uploads';
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    // Gera um nome de arquivo único com timestamp e extensão original
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const extension = path.extname(file.originalname);
+    cb(null, uniqueSuffix + extension);
+  }
+});
+
+// Filtro para verificar tipos de arquivos permitidos
+const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+  // Aceitar imagens, documentos, vídeos e áudios
+  const allowedTypes = [
+    // Imagens
+    'image/jpeg', 'image/png', 'image/gif', 'image/webp', 
+    // Documentos
+    'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'text/plain', 'text/csv',
+    // Áudio
+    'audio/mpeg', 'audio/wav', 'audio/ogg',
+    // Vídeo
+    'video/mp4', 'video/webm', 'video/quicktime'
+  ];
+  
+  if (allowedTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error(`Tipo de arquivo não permitido: ${file.mimetype}`));
+  }
+};
+
+// Configurar o middleware do multer
+const upload = multer({ 
+  storage: uploadStorage,
+  fileFilter,
+  limits: { fileSize: 50 * 1024 * 1024 } // Limite de 50MB
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Primeiro, configurar a autenticação para que req.login esteja disponível
@@ -16,7 +68,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Rota para verificar a contagem de usuários (pública, sem autenticação)
   app.get("/api/users/count", async (req: Request, res: Response) => {
     try {
-      const count = await storage.getUserCount();
+      const count = await dbStorage.getUserCount();
       // Log para debug
       console.log("User count:", count);
       res.json({ count });
@@ -36,7 +88,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(400).json({ error: 'Usuário e senha são obrigatórios' });
         }
         
-        const user = await storage.getUserByUsername(username);
+        const user = await dbStorage.getUserByUsername(username);
         if (!user) {
           return res.status(404).json({ error: 'Usuário não encontrado' });
         }
@@ -63,7 +115,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/register", async (req: Request, res: Response) => {
     try {
       // Verificar se já existe algum usuário
-      const count = await storage.getUserCount();
+      const count = await dbStorage.getUserCount();
       if (count > 0) {
         return res.status(403).json({ error: 'Registro não permitido. Já existe um administrador.' });
       }
@@ -75,7 +127,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hashedPassword = await hashPassword(userData.password);
       
       // Cria o usuário
-      const user = await storage.createUser({
+      const user = await dbStorage.createUser({
         ...userData,
         password: hashedPassword
       });
@@ -200,13 +252,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: (error as Error).message });
     }
   });
+  
+  // Rota para upload de arquivos
+  app.post("/api/upload", upload.single('file'), async (req: Request, res: Response) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "Nenhum arquivo enviado" });
+      }
+      
+      // Obter informações do arquivo
+      const file = req.file;
+      const filePath = path.join(process.cwd(), file.path);
+      const fileType = file.mimetype.split('/')[0]; // image, application, video, audio
+      
+      // Determinar o tipo de mídia
+      let mediaType = 'document';
+      if (fileType === 'image') mediaType = 'image';
+      else if (fileType === 'video') mediaType = 'video';
+      else if (fileType === 'audio') mediaType = 'audio';
+      
+      res.json({
+        success: true,
+        file: {
+          path: filePath,
+          originalName: file.originalname,
+          filename: file.filename,
+          size: file.size,
+          mimetype: file.mimetype,
+          mediaType: mediaType
+        }
+      });
+    } catch (error) {
+      console.error('Erro ao fazer upload de arquivo:', error);
+      res.status(500).json({ 
+        message: 'Erro ao fazer upload de arquivo', 
+        error: (error as Error).message 
+      });
+    }
+  });
 
   // Esta rota foi movida para cima
   
   // Contacts API Routes
   app.get("/api/contacts", async (req: Request, res: Response) => {
     try {
-      const contacts = await storage.getContacts();
+      const contacts = await dbStorage.getContacts();
       res.json(contacts);
     } catch (error) {
       res.status(500).json({ message: (error as Error).message });
@@ -216,7 +306,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Messages API Routes
   app.get("/api/messages", async (req: Request, res: Response) => {
     try {
-      const messages = await storage.getMessages();
+      const messages = await dbStorage.getMessages();
       res.json(messages);
     } catch (error) {
       res.status(500).json({ message: (error as Error).message });
@@ -225,7 +315,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/messages/scheduled", async (req: Request, res: Response) => {
     try {
-      const messages = await storage.getScheduledMessages();
+      const messages = await dbStorage.getScheduledMessages();
       res.json(messages);
     } catch (error) {
       res.status(500).json({ message: (error as Error).message });
@@ -237,13 +327,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate message data
       const messageData = messageWithValidationSchema.parse(req.body);
       
-      // Create message in storage
-      const message = await storage.createMessage({
+      // Create message in storage with media information if available
+      const message = await dbStorage.createMessage({
         content: messageData.content,
         recipient: messageData.recipient,
         recipientName: messageData.recipientName,
         scheduledFor: messageData.scheduledFor,
-        isGroup: messageData.isGroup || false
+        isGroup: messageData.isGroup || false,
+        hasMedia: messageData.hasMedia || false,
+        mediaType: messageData.mediaType,
+        mediaPath: messageData.mediaPath,
+        mediaName: messageData.mediaName,
+        mediaCaption: messageData.mediaCaption
       });
 
       // If no scheduled time or it's immediate, send right away
@@ -252,11 +347,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const messageId = await whatsAppService.sendMessage(
             messageData.recipient,
             messageData.content,
-            messageData.recipientName
+            messageData.recipientName,
+            messageData.mediaPath || null,
+            messageData.mediaType || null,
+            messageData.mediaCaption || null
           );
           
           // Update message status to sent
-          await storage.updateMessage(message.id, {
+          await dbStorage.updateMessage(message.id, {
             status: "sent",
             sentAt: new Date()
           });
@@ -272,7 +370,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           res.json({ ...message, status: "sent", sentAt: new Date() });
         } catch (error) {
           // Update message status to failed
-          await storage.updateMessage(message.id, {
+          await dbStorage.updateMessage(message.id, {
             status: "failed",
             errorMessage: (error as Error).message
           });
@@ -310,7 +408,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid message ID" });
       }
       
-      const success = await storage.deleteMessage(messageId);
+      const success = await dbStorage.deleteMessage(messageId);
       if (success) {
         res.json({ success: true });
       } else {

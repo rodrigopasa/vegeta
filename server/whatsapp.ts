@@ -1,5 +1,8 @@
 // Importar WhatsApp Web.js como CommonJS
-import { Client, MessageMedia } from "whatsapp-web.js";
+import { Client } from "whatsapp-web.js";
+// Para o MessageMedia, precisamos usar o import padrão
+import WhatsAppWebJS from "whatsapp-web.js";
+const { MessageMedia } = WhatsAppWebJS;
 // Tipos para TypeScript
 type WhatsAppClient = any;
 import { storage } from "./storage";
@@ -19,7 +22,7 @@ interface WhatsAppManager {
   qrCode: string | null;
   initializeClient(): Promise<void>;
   getQRCode(): string | null;
-  sendMessage(to: string, content: string): Promise<string>;
+  sendMessage(to: string, content: string, recipientName?: string | null, mediaPath?: string | null, mediaType?: string | null, mediaCaption?: string | null): Promise<string>;
   refreshContacts(): Promise<void>;
 }
 
@@ -234,7 +237,14 @@ class WhatsAppService implements WhatsAppManager {
     });
   }
 
-  async sendMessage(to: string, content: string, recipientName: string | null = null): Promise<string> {
+  async sendMessage(
+    to: string, 
+    content: string, 
+    recipientName: string | null = null, 
+    mediaPath: string | null = null, 
+    mediaType: string | null = null, 
+    mediaCaption: string | null = null
+  ): Promise<string> {
     try {
       if (!this.client || !this.isConnected) {
         throw new Error('WhatsApp client is not connected');
@@ -247,9 +257,37 @@ class WhatsAppService implements WhatsAppManager {
       // Processar variáveis e menções na mensagem
       let processedContent = this.processMessageVariables(content, recipientName);
       processedContent = await this.processMessageMentions(processedContent);
-      
-      const response = await this.client.sendMessage(chatId, processedContent);
-      return response.id._serialized;
+
+      // Se tiver um caminho de mídia, enviar como anexo
+      if (mediaPath && fs.existsSync(mediaPath)) {
+        log(`Sending media message from path: ${mediaPath}`, 'whatsapp');
+        
+        // Obter o tipo MIME do arquivo
+        const mimeType = mime.lookup(mediaPath) || 'application/octet-stream';
+        
+        // Ler o arquivo como Base64
+        const fileData = fs.readFileSync(mediaPath, {encoding: 'base64'});
+        
+        // Nome do arquivo
+        const fileName = path.basename(mediaPath);
+        
+        // Criar objeto MessageMedia
+        const media = new MessageMedia(mimeType, fileData, fileName);
+        
+        // Usar a legenda se fornecida, senão usar o conteúdo da mensagem
+        const caption = mediaCaption || processedContent;
+        
+        // Enviar mensagem com mídia
+        const response = await this.client.sendMessage(chatId, media, { caption });
+        
+        log(`Media message sent successfully with ID: ${response.id._serialized}`, 'whatsapp');
+        return response.id._serialized;
+      }
+      else {
+        // Enviar mensagem de texto normal
+        const response = await this.client.sendMessage(chatId, processedContent);
+        return response.id._serialized;
+      }
     } catch (error) {
       log(`Error sending message: ${error}`, 'whatsapp');
       throw error;
@@ -385,7 +423,14 @@ class WhatsAppService implements WhatsAppManager {
             await storage.updateMessage(message.id, { status: 'sending' });
             
             // Send the message
-            const messageId = await this.sendMessage(message.recipient, message.content, message.recipientName);
+            const messageId = await this.sendMessage(
+              message.recipient, 
+              message.content, 
+              message.recipientName,
+              message.mediaPath || null,
+              message.mediaType || null,
+              message.mediaCaption || null
+            );
             
             // Update message as sent
             await storage.updateMessage(message.id, {
