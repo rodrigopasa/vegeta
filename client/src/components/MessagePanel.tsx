@@ -1,4 +1,4 @@
-import React, { useRef, useState, ChangeEvent } from 'react';
+import React, { useRef, useState, ChangeEvent, useEffect } from 'react';
 import { X, UserCircle, Users, Phone, Clock, Upload, Table, Send, MessageCircle, Loader, CheckCircle } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,22 @@ interface Recipient {
 }
 
 const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
+  // Estado interno para controlar a visibilidade, independente de re-renderizações do componente pai
+  const [isVisible, setIsVisible] = useState(isOpen);
+  
+  // Sincronizar o estado interno com a prop quando ela muda
+  useEffect(() => {
+    setIsVisible(isOpen);
+  }, [isOpen]);
+  
+  // Função de fechamento que atualiza o estado interno e chama a função do pai
+  const handleClose = () => {
+    setIsVisible(false);
+    onClose();
+  };
+  
+  // Se o painel não estiver visível, não renderizar nada
+  if (!isVisible) return null;
   const { toast } = useToast();
   const { isConnected, contacts, groups, sendMessage } = useWhatsApp();
   
@@ -522,7 +538,7 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
         </h3>
         <button 
           className="text-white hover:bg-[hsl(var(--whatsapp-dark-green))/20] rounded-full p-1.5 transition-colors"
-          onClick={onClose}
+          onClick={handleClose}
         >
           <X size={18} />
         </button>
