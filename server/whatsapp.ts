@@ -190,7 +190,48 @@ class WhatsAppService implements WhatsAppManager {
     return this.qrCode;
   }
 
-  async sendMessage(to: string, content: string): Promise<string> {
+  // Funções para processar variáveis na mensagem
+  private processMessageVariables(content: string, recipientName: string | null): string {
+    if (!content) return content;
+    
+    const now = new Date();
+    // Formato para data em Português Brasil (SP)
+    const dateFormatter = new Intl.DateTimeFormat('pt-BR', {
+      day: '2-digit', 
+      month: '2-digit',
+      year: 'numeric',
+      timeZone: 'America/Sao_Paulo'
+    });
+    
+    // Formato para hora em Português Brasil (SP)
+    const timeFormatter = new Intl.DateTimeFormat('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'America/Sao_Paulo'
+    });
+    
+    // Substituir variáveis
+    const processed = content
+      .replace(/\{\{nome\}\}/g, recipientName || 'Cliente')
+      .replace(/\{\{data\}\}/g, dateFormatter.format(now))
+      .replace(/\{\{hora\}\}/g, timeFormatter.format(now));
+      
+    return processed;
+  }
+  
+  // Funções para processar menções na mensagem
+  private async processMessageMentions(content: string): Promise<string> {
+    if (!content) return content;
+    
+    // Processa menções de contatos (@Nome)
+    return content.replace(/@([^\s]+)/g, (match, name) => {
+      // No WhatsApp Web podemos substituir com a menção real, 
+      // mas por enquanto manteremos o texto original
+      return match;
+    });
+  }
+
+  async sendMessage(to: string, content: string, recipientName: string | null = null): Promise<string> {
     try {
       if (!this.client || !this.isConnected) {
         throw new Error('WhatsApp client is not connected');
@@ -200,7 +241,11 @@ class WhatsAppService implements WhatsAppManager {
       const formattedNumber = to.includes('@g.us') ? to : to.replace(/\D/g, '');
       const chatId = to.includes('@g.us') ? to : `${formattedNumber}@c.us`;
       
-      const response = await this.client.sendMessage(chatId, content);
+      // Processar variáveis e menções na mensagem
+      let processedContent = this.processMessageVariables(content, recipientName);
+      processedContent = await this.processMessageMentions(processedContent);
+      
+      const response = await this.client.sendMessage(chatId, processedContent);
       return response.id._serialized;
     } catch (error) {
       log(`Error sending message: ${error}`, 'whatsapp');
@@ -282,7 +327,7 @@ class WhatsAppService implements WhatsAppManager {
             await storage.updateMessage(message.id, { status: 'sending' });
             
             // Send the message
-            const messageId = await this.sendMessage(message.recipient, message.content);
+            const messageId = await this.sendMessage(message.recipient, message.content, message.recipientName);
             
             // Update message as sent
             await storage.updateMessage(message.id, {
