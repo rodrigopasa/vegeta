@@ -6,7 +6,7 @@ import { messageWithValidationSchema, insertUserSchema } from "@shared/schema";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
 import passport from "passport";
-import { setupAuth } from "./auth";
+import { setupAuth, hashPassword } from "./auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Configurar autenticação
@@ -53,8 +53,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validar dados do usuário
       const userData = insertUserSchema.parse(req.body);
       
+      // Hash da senha antes de salvar
+      const hashedPassword = await hashPassword(userData.password);
+      
       // Cria o usuário e faz login
-      const user = await storage.createUser(userData);
+      const user = await storage.createUser({
+        ...userData,
+        password: hashedPassword
+      });
+      
       req.login(user, (err) => {
         if (err) {
           return res.status(500).json({ error: 'Erro ao fazer login após registro' });
@@ -66,6 +73,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const validationError = fromZodError(error);
         res.status(400).json({ error: validationError.message });
       } else {
+        console.error('Erro ao registrar usuário:', error);
         res.status(500).json({ error: (error as Error).message });
       }
     }

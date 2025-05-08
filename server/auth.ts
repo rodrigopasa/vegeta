@@ -19,17 +19,34 @@ declare global {
 
 const scryptAsync = promisify(scrypt);
 
-async function hashPassword(password: string) {
+export async function hashPassword(password: string) {
   const salt = randomBytes(16).toString("hex");
   const buf = (await scryptAsync(password, salt, 64)) as Buffer;
   return `${buf.toString("hex")}.${salt}`;
 }
 
 async function comparePasswords(supplied: string, stored: string) {
+  // Verificar se a senha armazenada tem o formato correto
+  if (!stored || !stored.includes('.')) {
+    console.error('Formato de senha inválido:', stored);
+    return false;
+  }
+  
   const [hashed, salt] = stored.split(".");
-  const hashedBuf = Buffer.from(hashed, "hex");
-  const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
-  return timingSafeEqual(hashedBuf, suppliedBuf);
+  
+  if (!hashed || !salt) {
+    console.error('Hash ou salt não encontrados na senha armazenada');
+    return false;
+  }
+  
+  try {
+    const hashedBuf = Buffer.from(hashed, "hex");
+    const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
+    return timingSafeEqual(hashedBuf, suppliedBuf);
+  } catch (error) {
+    console.error('Erro ao comparar senhas:', error);
+    return false;
+  }
 }
 
 export function setupAuth(app: Express) {
