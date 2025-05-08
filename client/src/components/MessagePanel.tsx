@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { formatPhone } from '@/lib/utils';
 import { Spinner } from './Spinner';
+import FileUploader from './FileUploader';
 
 interface MessagePanelProps {
   isOpen: boolean;
@@ -804,108 +805,17 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
         
         {/* Media attachment */}
         <div className="p-4 border-b border-gray-200">
-          <div className="bg-white p-3 rounded-md shadow-sm border border-gray-100 media-section">
-            <div className="flex justify-between items-center mb-2">
-              <label className="block text-sm font-medium text-[hsl(var(--whatsapp-secondary))]">
-                Anexar arquivo
-              </label>
-              {hasMedia && (
-                <button 
-                  className="text-xs text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-2 py-1 rounded-full transition-colors"
-                  onClick={() => {
-                    setHasMedia(false);
-                    setMediaFile(null);
-                    setMediaType('');
-                    setMediaPath('');
-                    setMediaName('');
-                    setMediaCaption('');
-                  }}
-                >
-                  Remover arquivo
-                </button>
-              )}
-            </div>
-            
-            {/* Media attachment container - fixed height to prevent layout shift */}
-            <div className="media-attachment-container min-h-[150px] relative" id="media-container">
-              {/* Attached file display */}
-              {(hasMedia && mediaFile) ? (
-                <div className="border rounded-md p-3 bg-[hsl(var(--whatsapp-light-green))/5] border-[hsl(var(--whatsapp-light-green))/20]">
-                  <div className="flex items-center">
-                    <Paperclip className="h-5 w-5 text-[hsl(var(--whatsapp-green))] mr-2 flex-shrink-0" />
-                    <div className="overflow-hidden flex-1">
-                      <p className="font-medium text-sm truncate">{mediaName}</p>
-                      <p className="text-xs text-gray-500">{mediaFile && (mediaFile.size / 1024).toFixed(1)} KB</p>
-                    </div>
-                    {isUploading && (
-                      <Spinner className="ml-auto h-4 w-4 flex-shrink-0" />
-                    )}
-                  </div>
-                  
-                  {/* Status indicator */}
-                  {isUploading ? (
-                    <div className="mt-2 bg-blue-50 text-blue-700 text-xs p-2 rounded flex items-center">
-                      <Loader className="animate-spin h-3 w-3 mr-2" />
-                      <span>Enviando arquivo... Aguarde por favor.</span>
-                    </div>
-                  ) : mediaPath ? (
-                    <div className="mt-2 bg-green-50 text-green-700 text-xs p-2 rounded flex items-center">
-                      <CheckCircle className="h-3 w-3 mr-2" />
-                      <span>Arquivo anexado com sucesso!</span>
-                    </div>
-                  ) : null}
-                  
-                  {/* Caption input - only show if upload is complete */}
-                  {(mediaPath && !isUploading) && (
-                    <div className="mt-3">
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
-                        Legenda (opcional)
-                      </label>
-                      <Input 
-                        type="text"
-                        placeholder="Digite uma legenda para o arquivo..."
-                        value={mediaCaption || ''}
-                        onChange={(e) => setMediaCaption(e.target.value)}
-                        className="text-sm border-gray-300 focus:border-[hsl(var(--whatsapp-green))] focus:ring focus:ring-[hsl(var(--whatsapp-green))/20]"
-                      />
-                    </div>
-                  )}
-                </div>
-              ) : (
-                /* File selection area */
-                <div className="border-2 border-dashed rounded-md p-4 text-center bg-gray-50">
-                  <input 
-                    type="file"
-                    ref={mediaInputRef}
-                    className="hidden"
-                    accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.jpg,.jpeg,.png"
-                    onChange={handleMediaFileSelect}
-                  />
-                  <Button
-                    variant="outline"
-                    onClick={() => mediaInputRef.current?.click()}
-                    className="w-full bg-white hover:bg-gray-50 transition-colors"
-                    disabled={isUploading}
-                  >
-                    <Paperclip className="h-4 w-4 mr-2 text-[hsl(var(--whatsapp-green))]" />
-                    Selecionar arquivo
-                  </Button>
-                  <p className="text-xs text-gray-500 mt-2 italic">
-                    Tipos permitidos: PDF, Word, Excel, imagens
-                  </p>
-                </div>
-              )}
-            </div>
-            
-            {/* Error display */}
-            {uploadError && (
-              <Alert variant="destructive" className="mt-3">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Erro ao anexar arquivo</AlertTitle>
-                <AlertDescription>{uploadError}</AlertDescription>
-              </Alert>
-            )}
-          </div>
+          <FileUploader 
+            onFileUploaded={(fileData) => {
+              // Atualizar todos os estados relacionados a mídia
+              setHasMedia(fileData.hasMedia);
+              setMediaFile(fileData.mediaFile);
+              setMediaType(fileData.mediaType);
+              setMediaPath(fileData.mediaPath);
+              setMediaName(fileData.mediaName);
+              setMediaCaption(fileData.mediaCaption);
+            }} 
+          />
         </div>
         
         {/* Scheduling options */}
