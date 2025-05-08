@@ -3,7 +3,7 @@ import { useWhatsApp } from '@/contexts/WhatsAppContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Search, Calendar, Users, User, Edit, Trash2, AlertCircle } from 'lucide-react';
+import { Search, Calendar, Users, User, Edit, Trash2, AlertCircle, Bell } from 'lucide-react';
 import { formatDate, formatDateLong, getStatusColor, getFormattedStatus, getMessagePreview, processVariables } from '@/lib/utils';
 import MessagePanel from '@/components/MessagePanel';
 import { format, parseISO } from 'date-fns';

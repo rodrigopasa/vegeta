@@ -177,6 +177,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             sentAt: new Date()
           });
           
+          // Enviar notificação de sucesso para o número de administrador
+          try {
+            await whatsAppService.sendStatusNotification(true, message);
+          } catch (error) {
+            console.error('Failed to send status notification:', error);
+            // Não propagamos o erro para não interromper o fluxo principal
+          }
+          
           res.json({ ...message, status: "sent", sentAt: new Date() });
         } catch (error) {
           // Update message status to failed
@@ -184,6 +192,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             status: "failed",
             errorMessage: (error as Error).message
           });
+          
+          // Enviar notificação de falha para o número de administrador
+          try {
+            await whatsAppService.sendStatusNotification(false, message, (error as Error).message);
+          } catch (notifError) {
+            console.error('Failed to send failure notification:', notifError);
+            // Não propagamos o erro para não interromper o fluxo principal
+          }
           
           res.status(500).json({
             message: `Message created but failed to send: ${(error as Error).message}`,

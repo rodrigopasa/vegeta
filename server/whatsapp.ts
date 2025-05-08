@@ -312,6 +312,61 @@ class WhatsAppService implements WhatsAppManager {
     }
   }
 
+  // Método público para enviar notificações de status a partir de fora da classe
+  async sendStatusNotification(
+    success: boolean, 
+    messageInfo: { 
+      id: number, 
+      recipient: string, 
+      recipientName?: string | null,
+      content: string,
+      isGroup?: boolean | null
+    },
+    errorMessage?: string
+  ) {
+    return this._sendStatusNotification(success, messageInfo, errorMessage);
+  }
+
+  // Função interna para enviar notificação de status para o administrador
+  private async _sendStatusNotification(
+    success: boolean, 
+    messageInfo: { 
+      id: number, 
+      recipient: string, 
+      recipientName?: string | null,
+      content: string,
+      isGroup?: boolean | null
+    },
+    errorMessage?: string
+  ) {
+    try {
+      const adminPhone = "554197251311"; // Número do administrador para receber notificações
+      const recipientDisplay = messageInfo.recipientName || messageInfo.recipient;
+      const groupStatus = messageInfo.isGroup ? " (grupo)" : "";
+      
+      let statusMessage = "";
+      if (success) {
+        statusMessage = `✅ Mensagem #${messageInfo.id} enviada com sucesso para ${recipientDisplay}${groupStatus}.\n\nConteúdo: "${this.truncateMessage(messageInfo.content, 100)}"`;
+      } else {
+        statusMessage = `❌ Falha ao enviar mensagem #${messageInfo.id} para ${recipientDisplay}${groupStatus}.\n\nErro: ${errorMessage}\n\nConteúdo: "${this.truncateMessage(messageInfo.content, 100)}"`;
+      }
+      
+      // Envia a notificação para o administrador
+      log(`Sending status notification to admin: ${adminPhone}`, 'whatsapp');
+      await this.sendMessage(adminPhone, statusMessage);
+      log('Status notification sent successfully', 'whatsapp');
+    } catch (error) {
+      log(`Failed to send status notification: ${error}`, 'whatsapp');
+      // Não propagamos o erro para não interromper o fluxo principal
+    }
+  }
+  
+  // Função auxiliar para truncar mensagens longas
+  private truncateMessage(message: string, maxLength: number): string {
+    if (message.length <= maxLength) return message;
+    return message.substring(0, maxLength) + '...';
+  }
+  
   startMessageScheduler() {
     // Check for pending messages every minute
     this.messageScheduler = setInterval(async () => {
@@ -340,6 +395,10 @@ class WhatsAppService implements WhatsAppManager {
               type: 'MESSAGE_SENT',
               payload: { messageId: message.id, success: true }
             });
+            
+            // Enviar notificação de sucesso para o administrador
+            await this._sendStatusNotification(true, message);
+            
           } catch (error) {
             log(`Error sending scheduled message ${message.id}: ${error}`, 'whatsapp');
             
@@ -356,6 +415,9 @@ class WhatsAppService implements WhatsAppManager {
                 error: (error as Error).message 
               }
             });
+            
+            // Enviar notificação de falha para o administrador
+            await this._sendStatusNotification(false, message, (error as Error).message);
           }
         }
       } catch (error) {
