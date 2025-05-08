@@ -251,17 +251,24 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
       return;
     }
     
+    // Criar uma cópia local do arquivo para garantir que não será perdido durante o processamento assíncrono
+    const localFile = file;
+    const localFileName = file.name;
+    const localFileType = file.type;
+    const localFileSize = file.size;
+    
+    // Atualizar o estado antes de qualquer operação assíncrona
     setUploadError(null);
-    setMediaFile(file);
-    setMediaName(file.name);
-    setMediaType(file.type);
+    setMediaFile(localFile);
+    setMediaName(localFileName);
+    setMediaType(localFileType);
     setHasMedia(true);
     setIsUploading(true);
     
     try {
       // Create a FormData object to send the file
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', localFile);
       
       // Upload the file to the server
       const response = await fetch('/api/upload', {
@@ -274,11 +281,20 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
       }
       
       const data = await response.json();
-      setMediaPath(data.path);
+      console.log("Upload concluído com sucesso:", data);
+      
+      // Garantir que ainda estamos trabalhando com o mesmo arquivo após a operação assíncrona
+      setMediaPath(data.file.path);
+      
+      // Reafirmar o estado após upload bem-sucedido
+      setHasMedia(true);
+      setMediaFile(localFile);
+      setMediaName(localFileName);
+      setMediaType(localFileType);
       
       toast({
         title: "Arquivo anexado",
-        description: `${file.name} foi anexado com sucesso.`,
+        description: `${localFileName} foi anexado com sucesso.`,
       });
     } catch (error) {
       console.error('Error uploading file:', error);
@@ -290,7 +306,7 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
         variant: "destructive"
       });
       
-      // Reset media state
+      // Reset media state on error only
       setHasMedia(false);
       setMediaFile(null);
       setMediaName('');
@@ -777,7 +793,7 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
         
         {/* Media attachment */}
         <div className="p-4 border-b border-gray-200">
-          <div className="bg-white p-3 rounded-md shadow-sm border border-gray-100">
+          <div className="bg-white p-3 rounded-md shadow-sm border border-gray-100 media-section">
             <div className="flex justify-between items-center mb-2">
               <label className="block text-sm font-medium text-[hsl(var(--whatsapp-secondary))]">
                 Anexar arquivo
@@ -799,20 +815,24 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
               )}
             </div>
             
-            <div className="media-attachment-container">
+            {/* Media attachment container - fixed height to prevent layout shift */}
+            <div className="media-attachment-container min-h-[150px] relative">
+              {/* Attached file display */}
               {hasMedia && mediaFile ? (
                 <div className="border rounded-md p-3 bg-[hsl(var(--whatsapp-light-green))/5] border-[hsl(var(--whatsapp-light-green))/20]">
                   <div className="flex items-center">
-                    <Paperclip className="h-5 w-5 text-[hsl(var(--whatsapp-green))] mr-2" />
-                    <div className="overflow-hidden">
+                    <Paperclip className="h-5 w-5 text-[hsl(var(--whatsapp-green))] mr-2 flex-shrink-0" />
+                    <div className="overflow-hidden flex-1">
                       <p className="font-medium text-sm truncate">{mediaName}</p>
                       <p className="text-xs text-gray-500">{(mediaFile.size / 1024).toFixed(1)} KB</p>
                     </div>
                     {isUploading && (
-                      <Spinner className="ml-auto h-4 w-4" />
+                      <Spinner className="ml-auto h-4 w-4 flex-shrink-0" />
                     )}
                   </div>
-                  {mediaPath && (
+                  
+                  {/* Caption input - only show if upload is complete */}
+                  {(mediaPath && !isUploading) && (
                     <div className="mt-3">
                       <label className="block text-xs font-medium text-gray-700 mb-1">
                         Legenda (opcional)
@@ -828,6 +848,7 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
                   )}
                 </div>
               ) : (
+                /* File selection area */
                 <div className="border-2 border-dashed rounded-md p-4 text-center bg-gray-50">
                   <input 
                     type="file"
@@ -852,6 +873,7 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
               )}
             </div>
             
+            {/* Error display */}
             {uploadError && (
               <Alert variant="destructive" className="mt-3">
                 <AlertCircle className="h-4 w-4" />
