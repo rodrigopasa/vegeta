@@ -10,6 +10,7 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  getUserCount(): Promise<number>;
   
   // Contact methods
   getContacts(): Promise<Contact[]>;
@@ -62,6 +63,10 @@ export class MemStorage implements IStorage {
     const user: User = { ...insertUser, id };
     this.users.set(id, user);
     return user;
+  }
+
+  async getUserCount(): Promise<number> {
+    return this.users.size;
   }
 
   // Contact methods

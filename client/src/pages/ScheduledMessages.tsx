@@ -1,21 +1,75 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useWhatsApp } from '@/contexts/WhatsAppContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Search, Calendar, Users, User, Edit, Trash2 } from 'lucide-react';
+import { Search, Calendar, Users, User, Edit, Trash2, AlertCircle } from 'lucide-react';
 import { formatDate, getStatusColor, getFormattedStatus, getMessagePreview } from '@/lib/utils';
 import MessagePanel from '@/components/MessagePanel';
+import { format, parseISO } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { useToast } from '@/hooks/use-toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 const ScheduledMessages: React.FC = () => {
   const { scheduledMessages, deleteMessage } = useWhatsApp();
   const [searchTerm, setSearchTerm] = useState('');
   const [showMessagePanel, setShowMessagePanel] = useState(false);
+  const [messageToDelete, setMessageToDelete] = useState<number | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const { toast } = useToast();
 
   const filteredMessages = scheduledMessages.filter(message =>
     message.recipientName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     message.content.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Formatar data para o timezone de São Paulo
+  const formatDateSP = (date: Date | string | null | undefined): string => {
+    if (!date) return "Data não definida";
+    
+    try {
+      const dateObj = typeof date === "string" ? parseISO(date) : date;
+      // Formato: dia da semana, dia de mês de ano às HH:MM (horário de São Paulo)
+      return format(dateObj, "EEEE, dd 'de' MMMM 'de' yyyy 'às' HH:mm 'h' (BRT)", { locale: ptBR });
+    } catch (error) {
+      console.error("Erro ao formatar data:", error);
+      return "Data inválida";
+    }
+  };
+
+  // Confirmação de exclusão
+  const handleDeleteClick = (id: number) => {
+    setMessageToDelete(id);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (messageToDelete) {
+      try {
+        await deleteMessage(messageToDelete);
+        toast({
+          title: "Mensagem excluída",
+          description: "A mensagem agendada foi removida com sucesso.",
+        });
+      } catch (error) {
+        toast({
+          title: "Erro ao excluir",
+          description: "Não foi possível excluir a mensagem. Tente novamente.",
+          variant: "destructive"
+        });
+      }
+      setIsDeleteDialogOpen(false);
+      setMessageToDelete(null);
+    }
+  };
 
   // Sort by scheduled date (most recent first)
   const sortedMessages = [...filteredMessages].sort((a, b) => {
@@ -72,7 +126,7 @@ const ScheduledMessages: React.FC = () => {
                       <div className="flex items-center mt-1">
                         <Calendar className="h-3 w-3 text-[hsl(var(--whatsapp-secondary))] mr-1" />
                         <span className="text-xs text-[hsl(var(--whatsapp-secondary))]">
-                          Agendada para: {formatDate(message.scheduledFor)}
+                          Agendada para: {formatDateSP(message.scheduledFor)}
                         </span>
                       </div>
                       <div className="mt-3 text-sm">

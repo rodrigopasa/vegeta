@@ -1,12 +1,84 @@
-import type { Express, Request, Response } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { whatsAppService } from "./whatsapp";
-import { messageWithValidationSchema } from "@shared/schema";
+import { messageWithValidationSchema, insertUserSchema } from "@shared/schema";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
+import passport from "passport";
+import { setupAuth } from "./auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Configurar autenticação
+  setupAuth(app);
+  
+  // Middleware para proteger rotas
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    // Lista de rotas públicas que não precisam de autenticação
+    const publicRoutes = [
+      '/api/login', 
+      '/api/register', 
+      '/api/users/count', 
+      '/api/user'
+    ];
+    
+    // Verifica se é uma rota pública ou se está autenticado
+    if (
+      publicRoutes.includes(req.path) || 
+      req.path.startsWith('/assets') || 
+      req.path.endsWith('.js') || 
+      req.path.endsWith('.css') || 
+      req.path.endsWith('.ico') || 
+      req.path === '/' || 
+      req.isAuthenticated()
+    ) {
+      return next();
+    }
+    
+    // Retorna erro 401 para rotas protegidas não autenticadas
+    res.status(401).json({ error: 'Unauthorized' });
+  });
+
+  // Rota para verificar a contagem de usuários
+  app.get("/api/users/count", async (req: Request, res: Response) => {
+    try {
+      const count = await storage.getUserCount();
+      res.json({ count });
+    } catch (error) {
+      res.status(500).json({ error: 'Erro ao contar usuários' });
+    }
+  });
+
+  // Rota para registrar um novo usuário (apenas se não houver usuários existentes)
+  app.post("/api/register", async (req: Request, res: Response) => {
+    try {
+      // Verificar se já existe algum usuário
+      const count = await storage.getUserCount();
+      if (count > 0) {
+        return res.status(403).json({ error: 'Registro não permitido. Já existe um administrador.' });
+      }
+
+      // Validar dados do usuário
+      const userData = insertUserSchema.parse(req.body);
+      
+      // Cria o usuário e faz login
+      const user = await storage.createUser(userData);
+      req.login(user, (err) => {
+        if (err) {
+          return res.status(500).json({ error: 'Erro ao fazer login após registro' });
+        }
+        res.status(201).json(user);
+      });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        const validationError = fromZodError(error);
+        res.status(400).json({ error: validationError.message });
+      } else {
+        res.status(500).json({ error: (error as Error).message });
+      }
+    }
+  });
+
   const httpServer = createServer(app);
   
   // Setup WebSockets
