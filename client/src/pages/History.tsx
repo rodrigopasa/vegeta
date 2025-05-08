@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, Calendar, CalendarRange, User, Users, AlertTriangle } from 'lucide-react';
-import { formatDate, getStatusColor, getFormattedStatus } from '@/lib/utils';
+import { formatDate, formatDateLong, getStatusColor, getFormattedStatus } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 
 const History: React.FC = () => {
@@ -123,19 +123,25 @@ const History: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <div className="flex items-center">
                         <Calendar className="h-3 w-3 mr-1" />
-                        {formatDate(message.createdAt)}
+                        <span title={formatDateLong(message.createdAt)}>
+                          {formatDate(message.createdAt)}
+                        </span>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {message.scheduledFor ? (
                         <div className="flex items-center">
                           <CalendarRange className="h-3 w-3 mr-1" />
-                          {formatDate(message.scheduledFor)}
+                          <span title={formatDateLong(message.scheduledFor)}>
+                            {formatDate(message.scheduledFor)}
+                          </span>
                         </div>
                       ) : message.sentAt ? (
                         <div className="flex items-center">
                           <Calendar className="h-3 w-3 mr-1" />
-                          {formatDate(message.sentAt)}
+                          <span title={formatDateLong(message.sentAt)}>
+                            {formatDate(message.sentAt)}
+                          </span>
                         </div>
                       ) : (
                         "-"

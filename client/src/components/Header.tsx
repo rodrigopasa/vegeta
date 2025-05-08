@@ -8,7 +8,7 @@ const Header: React.FC = () => {
     <header className="bg-[hsl(var(--whatsapp-dark-green))] text-white py-3 px-4 shadow-md flex items-center justify-between">
       <div className="flex items-center">
         <i className="fas fa-comment-dots text-2xl mr-3"></i>
-        <h1 className="text-xl font-semibold">WhatsApp Scheduler</h1>
+        <h1 className="text-xl font-semibold">PaZap - Disparador de Mensagens</h1>
       </div>
       
       {/* Connection status indicator */}
