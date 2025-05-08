@@ -9,7 +9,8 @@ import passport from "passport";
 import { setupAuth, hashPassword } from "./auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Definir as rotas públicas antes de configurar autenticação
+  // Primeiro, configurar a autenticação para que req.login esteja disponível
+  setupAuth(app);
   
   // Rota para verificar a contagem de usuários (pública, sem autenticação)
   app.get("/api/users/count", async (req: Request, res: Response) => {
@@ -39,14 +40,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Hash da senha antes de salvar
       const hashedPassword = await hashPassword(userData.password);
       
-      // Cria o usuário e faz login
+      // Cria o usuário
       const user = await storage.createUser({
         ...userData,
         password: hashedPassword
       });
       
+      // Fazer login com o usuário criado
       req.login(user, (err) => {
         if (err) {
+          console.error('Erro no login após registro:', err);
           return res.status(500).json({ error: 'Erro ao fazer login após registro' });
         }
         res.status(201).json(user);
@@ -61,9 +64,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
   });
-
-  // Configurar autenticação
-  setupAuth(app);
   
   // Definir as rotas públicas da API
   const publicApiRoutes = [
