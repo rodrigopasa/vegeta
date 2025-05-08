@@ -28,8 +28,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserCount(): Promise<number> {
-    const result = await db.select({ count: db.fn.count() }).from(users);
-    return Number(result[0].count) || 0;
+    const result = await db.select().from(users);
+    return result.length || 0;
   }
 
   async getContacts(): Promise<Contact[]> {
