@@ -7,6 +7,7 @@ import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
 import passport from "passport";
 import { setupAuth, hashPassword } from "./auth";
+import { pool } from "./db";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Primeiro, configurar a autenticação para que req.login esteja disponível
@@ -89,11 +90,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.sendFile("static-login.html", { root: "./client" });
   });
   
+  // ANTES DO MIDDLEWARE: Endpoint para resetar usuários (não protegido)
+  app.post("/reset-database", async (req: Request, res: Response) => {
+    if (process.env.NODE_ENV !== 'development') {
+      return res.status(403).json({ error: 'Este endpoint só está disponível em ambiente de desenvolvimento' });
+    }
+    
+    try {
+      // Executar uma query SQL para truncar a tabela de usuários
+      await pool.query('TRUNCATE TABLE "users" CASCADE');
+      console.log("🔧 Base de dados resetada com sucesso!");
+      return res.json({ success: true, message: 'Base de dados resetada com sucesso' });
+    } catch (error) {
+      console.error("Erro ao resetar a base de dados:", error);
+      return res.status(500).json({ error: 'Erro ao resetar a base de dados', details: (error as Error).message });
+    }
+  });
+
   // Substituir o comportamento do middleware de proteção de rotas
   // para redirecionar para a página estática em vez de retornar erro 401
   app.use((req: Request, res: Response, next: NextFunction) => {
     // Se a rota já foi processada ou é pública, ou o usuário está autenticado
     if (req.path === '/static-login.html' || 
+        req.path === '/reset-database' ||
         req.path.startsWith('/api/') || 
         req.path.endsWith('.js') || 
         req.path.endsWith('.css') ||
@@ -148,6 +167,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Esta rota foi movida para cima
+  
   // Contacts API Routes
   app.get("/api/contacts", async (req: Request, res: Response) => {
     try {
