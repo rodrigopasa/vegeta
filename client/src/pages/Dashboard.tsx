@@ -340,13 +340,11 @@ const Dashboard: React.FC = () => {
         onClose={() => setShowQRModal(false)} 
       />
       
-      {/* Message Panel */}
-      {showMessagePanel && (
-        <MessagePanel 
-          isOpen={showMessagePanel} 
-          onClose={() => setShowMessagePanel(false)} 
-        />
-      )}
+      {/* Message Panel - renderizado incondicionalmente com propriedade de visibilidade */}
+      <MessagePanel 
+        isOpen={showMessagePanel} 
+        onClose={() => setShowMessagePanel(false)} 
+      />
     </div>
   );
 };

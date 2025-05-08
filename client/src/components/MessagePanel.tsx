@@ -30,7 +30,9 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
   
   // Sincronizar o estado interno com a prop quando ela muda
   useEffect(() => {
-    setIsVisible(isOpen);
+    if (isOpen) {
+      setIsVisible(true); 
+    }
   }, [isOpen]);
   
   // Função de fechamento que atualiza o estado interno e chama a função do pai
@@ -41,6 +43,7 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
   
   // Se o painel não estiver visível, não renderizar nada
   if (!isVisible) return null;
+
   const { toast } = useToast();
   const { isConnected, contacts, groups, sendMessage } = useWhatsApp();
   
@@ -377,7 +380,7 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
       );
       
       // Close panel on success
-      onClose();
+      handleClose();
     } catch (error) {
       console.error('Error sending message:', error);
       toast({
@@ -427,7 +430,7 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
       );
       
       // Close panel on success
-      onClose();
+      handleClose();
     } catch (error) {
       console.error('Error sending message to new contact:', error);
       toast({
@@ -491,7 +494,7 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
           title: "Sucesso",
           description: `${csvRecipients.length} mensagens enviadas/agendadas com sucesso.`,
         });
-        onClose();
+        handleClose();
       } else {
         toast({
           title: "Atenção",
@@ -526,414 +529,398 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="w-96 bg-gradient-to-b from-white to-[#f7f9fc] border-l border-gray-200 flex flex-col h-screen overflow-hidden shadow-xl">
-      {/* Header */}
-      <div className="p-4 bg-[hsl(var(--whatsapp-light-green))] text-white border-b border-[hsl(var(--whatsapp-green))/30] flex justify-between items-center flex-shrink-0">
-        <h3 className="font-semibold text-lg flex items-center">
-          <MessageCircle className="mr-2 h-5 w-5" />
-          Nova mensagem
-        </h3>
-        <button 
-          className="text-white hover:bg-[hsl(var(--whatsapp-dark-green))/20] rounded-full p-1.5 transition-colors"
-          onClick={handleClose}
-        >
-          <X size={18} />
-        </button>
-      </div>
-      
-      {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto flex flex-col">
-        {/* Recipient selection tabs */}
-        <div className="p-4 border-b border-gray-200">
-          <Tabs defaultValue="saved" value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid grid-cols-3 mb-4 bg-gray-100 p-1 rounded-md">
-              <TabsTrigger value="saved" className="text-xs data-[state=active]:bg-white data-[state=active]:text-[hsl(var(--whatsapp-dark-green))] data-[state=active]:shadow-sm">
-                <UserCircle className="h-4 w-4 mr-1" />
-                Salvos
-              </TabsTrigger>
-              <TabsTrigger value="new" className="text-xs data-[state=active]:bg-white data-[state=active]:text-[hsl(var(--whatsapp-dark-green))] data-[state=active]:shadow-sm">
-                <Phone className="h-4 w-4 mr-1" />
-                Novo
-              </TabsTrigger>
-              <TabsTrigger value="csv" className="text-xs data-[state=active]:bg-white data-[state=active]:text-[hsl(var(--whatsapp-dark-green))] data-[state=active]:shadow-sm">
-                <Table className="h-4 w-4 mr-1" />
-                Importar
-              </TabsTrigger>
-            </TabsList>
-            
-            {/* Tab: Contatos Salvos */}
-            <TabsContent value="saved">
-              <div className="space-y-4">
-                <div className="bg-white p-3 rounded-md shadow-sm border border-gray-100">
-                  <label className="block text-sm font-medium text-[hsl(var(--whatsapp-secondary))] mb-2">
-                    Tipo de destinatário
-                  </label>
-                  <Select value={recipientType} onValueChange={handleRecipientTypeChange}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Selecione o tipo..." />
-                    </SelectTrigger>
-                    <SelectContent position="item-aligned">
-                      <SelectItem value="contact">Contato</SelectItem>
-                      <SelectItem value="group">Grupo</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                {recipientType && (
-                  <div className="bg-white p-3 rounded-md shadow-sm border border-gray-100">
-                    <label className="block text-sm font-medium text-[hsl(var(--whatsapp-secondary))] mb-2">
-                      Selecione o {recipientType === 'group' ? 'grupo' : 'contato'}
-                    </label>
-                    
-                    {selectedRecipient ? (
-                      /* Selected contact/group */
-                      <div className="flex items-center bg-[hsl(var(--whatsapp-light-green))/10] rounded-md p-3 border border-[hsl(var(--whatsapp-light-green))/30]">
-                        {isGroup ? (
-                          <Users className="h-5 w-5 text-[hsl(var(--whatsapp-green))] mr-2" />
-                        ) : (
-                          <UserCircle className="h-5 w-5 text-[hsl(var(--whatsapp-green))] mr-2" />
-                        )}
-                        <span className="text-sm font-medium">{selectedRecipientName}</span>
-                        {recipientMemberCount && (
-                          <span className="ml-1 text-xs text-gray-600 bg-gray-100 px-2 py-0.5 rounded-full">
-                            {recipientMemberCount} membros
-                          </span>
-                        )}
-                        <button 
-                          className="ml-auto text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full p-1 transition-colors"
-                          onClick={handleRemoveRecipient}
-                        >
-                          <X size={16} />
-                        </button>
-                      </div>
-                    ) : (
-                      /* Recipient selection dropdown */
-                      <Select onValueChange={handleRecipientChange}>
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder={`Selecione ${recipientType === 'group' ? 'um grupo' : 'um contato'}...`} />
-                        </SelectTrigger>
-                        <SelectContent position="item-aligned">
-                          {recipientType === 'contact' && contacts.map(contact => (
-                            <SelectItem 
-                              key={contact.id} 
-                              value={contact.phoneNumber}
-                            >
-                              {contact.name}
-                            </SelectItem>
-                          ))}
-                          {recipientType === 'group' && groups.map(group => (
-                            <SelectItem 
-                              key={group.id} 
-                              value={group.phoneNumber}
-                            >
-                              {group.name} {group.memberCount && `(${group.memberCount})`}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-            
-            {/* Tab: Novo Contato */}
-            <TabsContent value="new">
-              <div className="space-y-4">
-                <div className="bg-white p-3 rounded-md shadow-sm border border-gray-100">
-                  <label className="block text-sm font-medium text-[hsl(var(--whatsapp-secondary))] mb-2">
-                    Número do WhatsApp
-                  </label>
-                  <Input 
-                    placeholder="Ex: 55999999999"
-                    value={newRecipientPhone}
-                    onChange={(e) => setNewRecipientPhone(e.target.value)}
-                    className="border-gray-300 focus:border-[hsl(var(--whatsapp-green))] focus:ring focus:ring-[hsl(var(--whatsapp-green))/20]"
-                  />
-                  <p className="text-xs text-gray-500 mt-1 italic">
-                    Inclua o código do país (Ex: 55 para Brasil)
-                  </p>
-                </div>
-                
-                <div className="bg-white p-3 rounded-md shadow-sm border border-gray-100">
-                  <label className="block text-sm font-medium text-[hsl(var(--whatsapp-secondary))] mb-2">
-                    Nome (opcional)
-                  </label>
-                  <Input 
-                    placeholder="Nome do contato"
-                    value={newRecipientName}
-                    onChange={(e) => setNewRecipientName(e.target.value)}
-                    className="border-gray-300 focus:border-[hsl(var(--whatsapp-green))] focus:ring focus:ring-[hsl(var(--whatsapp-green))/20]"
-                  />
-                </div>
-                
-                {newRecipientPhone && (
-                  <div className="bg-[hsl(var(--whatsapp-light-green))/10] rounded-md p-3 border border-[hsl(var(--whatsapp-light-green))/30]">
-                    <p className="flex items-center text-sm">
-                      <Phone className="h-4 w-4 text-[hsl(var(--whatsapp-green))] mr-2" />
-                      <span>Enviando para:</span>
-                      <span className="font-medium ml-1">{formatPhone(formatPhoneNumber(newRecipientPhone))}</span>
-                    </p>
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-            
-            {/* Tab: Importar CSV */}
-            <TabsContent value="csv">
-              <div className="space-y-4">
-                <div className="bg-white p-3 rounded-md shadow-sm border border-gray-100">
-                  <label className="block text-sm font-medium text-[hsl(var(--whatsapp-secondary))] mb-2">
-                    Importar contatos via CSV
-                  </label>
-                  <div className="border-2 border-dashed rounded-md p-4 text-center bg-gray-50">
-                    <input 
-                      type="file"
-                      ref={fileInputRef}
-                      className="hidden"
-                      accept=".csv,.txt"
-                      onChange={processCSVFile}
-                    />
-                    <Button
-                      variant="outline"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="w-full bg-white hover:bg-gray-50 transition-colors"
-                    >
-                      <Upload className="h-4 w-4 mr-2 text-[hsl(var(--whatsapp-green))]" />
-                      Selecionar arquivo
-                    </Button>
-                    <p className="text-xs text-gray-500 mt-2 italic">
-                      Formato: telefone,nome (um por linha)
-                    </p>
-                  </div>
-                </div>
-                
-                {/* Preview dos contatos importados */}
-                {showRecipientPreview && (
-                  <div className="bg-white p-3 rounded-md shadow-sm border border-gray-100">
-                    <div className="flex justify-between items-center mb-2">
-                      <label className="block text-sm font-medium text-[hsl(var(--whatsapp-secondary))]">
-                        Contatos importados ({csvRecipients.length})
-                      </label>
-                      {csvRecipients.length > 0 && (
-                        <button 
-                          className="text-xs text-[hsl(var(--whatsapp-dark-green))] hover:underline"
-                          onClick={() => setShowRecipientPreview(false)}
-                        >
-                          Ocultar
-                        </button>
-                      )}
-                    </div>
-                    
-                    {csvErrors.length > 0 && (
-                      <Alert variant="destructive" className="mb-3">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertTitle>Erros na importação</AlertTitle>
-                        <AlertDescription>
-                          <div className="max-h-20 overflow-y-auto text-xs">
-                            {csvErrors.map((error, i) => (
-                              <div key={i}>{error}</div>
-                            ))}
-                          </div>
-                        </AlertDescription>
-                      </Alert>
-                    )}
-                    
-                    {csvRecipients.length > 0 && (
-                      <div className="border rounded-md overflow-hidden shadow-sm">
-                        <div className="max-h-32 overflow-y-auto">
-                          <table className="min-w-full">
-                            <thead className="bg-gray-50 text-xs">
-                              <tr>
-                                <th className="px-3 py-2 text-left">Telefone</th>
-                                <th className="px-3 py-2 text-left">Nome</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-200 text-xs bg-white">
-                              {csvRecipients.map((recipient, index) => (
-                                <tr key={index} className="hover:bg-gray-50">
-                                  <td className="px-3 py-2 font-medium">{formatPhone(recipient.phoneNumber)}</td>
-                                  <td className="px-3 py-2">{recipient.name || '-'}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    )}
-                    
-                    {/* Progresso de envio em massa */}
-                    {isBulkSending && (
-                      <div className="mt-3 bg-gray-50 p-3 rounded-md border border-gray-200">
-                        <div className="flex justify-between text-xs mb-1 font-medium">
-                          <span>Progresso do envio</span>
-                          <span>{bulkProgress}%</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
-                          <div 
-                            className="bg-[hsl(var(--whatsapp-green))] h-2.5 rounded-full transition-all duration-300" 
-                            style={{ width: `${bulkProgress}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    )}
-                    
-                    {/* Lista de falhas */}
-                    {failedRecipients.length > 0 && (
-                      <div className="mt-3 bg-red-50 p-3 rounded-md border border-red-200">
-                        <p className="text-xs text-red-600 font-medium flex items-center">
-                          <AlertCircle className="h-3 w-3 mr-1" />
-                          Falha ao enviar para {failedRecipients.length} contatos
-                        </p>
-                        <div className="max-h-20 overflow-y-auto text-xs mt-2">
-                          {failedRecipients.map((phone, i) => (
-                            <div key={i} className="text-red-500 mb-1 flex items-center">
-                              <span className="w-1.5 h-1.5 rounded-full bg-red-500 mr-1.5"></span>
-                              <span>{formatPhone(phone)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-          </Tabs>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white w-full max-w-2xl h-[90vh] rounded-md shadow-lg flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="bg-[hsl(var(--whatsapp-green))] text-white p-4 flex justify-between items-center">
+          <h3 className="text-lg font-medium flex items-center">
+            <MessageCircle className="h-5 w-5 mr-2" />
+            Nova mensagem
+          </h3>
+          <button 
+            className="text-white hover:bg-[hsl(var(--whatsapp-dark-green))/20] rounded-full p-1.5 transition-colors"
+            onClick={handleClose}
+          >
+            <X size={18} />
+          </button>
         </div>
         
-        {/* Message composer */}
-        <div className="p-4 border-b border-gray-200">
-          <div className="bg-white p-3 rounded-md shadow-sm border border-gray-100">
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto flex flex-col">
+          {/* Recipient selection tabs */}
+          <div className="p-4 border-b border-gray-200">
+            <Tabs defaultValue="saved" value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid grid-cols-3 mb-4 bg-gray-100 p-1 rounded-md">
+                <TabsTrigger value="saved" className="text-xs data-[state=active]:bg-white data-[state=active]:text-[hsl(var(--whatsapp-dark-green))] data-[state=active]:shadow-sm">
+                  <UserCircle className="h-4 w-4 mr-1" />
+                  Salvos
+                </TabsTrigger>
+                <TabsTrigger value="new" className="text-xs data-[state=active]:bg-white data-[state=active]:text-[hsl(var(--whatsapp-dark-green))] data-[state=active]:shadow-sm">
+                  <Phone className="h-4 w-4 mr-1" />
+                  Novo
+                </TabsTrigger>
+                <TabsTrigger value="csv" className="text-xs data-[state=active]:bg-white data-[state=active]:text-[hsl(var(--whatsapp-dark-green))] data-[state=active]:shadow-sm">
+                  <Table className="h-4 w-4 mr-1" />
+                  Importar
+                </TabsTrigger>
+              </TabsList>
+              
+              {/* Tab: Contatos Salvos */}
+              <TabsContent value="saved">
+                <div className="space-y-4">
+                  <div className="bg-white p-3 rounded-md shadow-sm border border-gray-100">
+                    <label className="block text-sm font-medium text-[hsl(var(--whatsapp-secondary))] mb-2">
+                      Tipo de destinatário
+                    </label>
+                    <Select value={recipientType} onValueChange={handleRecipientTypeChange}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Selecione o tipo..." />
+                      </SelectTrigger>
+                      <SelectContent position="item-aligned">
+                        <SelectItem value="contact">Contato</SelectItem>
+                        <SelectItem value="group">Grupo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {recipientType && (
+                    <div className="bg-white p-3 rounded-md shadow-sm border border-gray-100">
+                      <label className="block text-sm font-medium text-[hsl(var(--whatsapp-secondary))] mb-2">
+                        Selecione o {recipientType === 'group' ? 'grupo' : 'contato'}
+                      </label>
+                      
+                      {selectedRecipient ? (
+                        /* Selected contact/group */
+                        <div className="flex items-center bg-[hsl(var(--whatsapp-light-green))/10] rounded-md p-3 border border-[hsl(var(--whatsapp-light-green))/30]">
+                          {isGroup ? (
+                            <Users className="h-5 w-5 text-[hsl(var(--whatsapp-green))] mr-2" />
+                          ) : (
+                            <UserCircle className="h-5 w-5 text-[hsl(var(--whatsapp-green))] mr-2" />
+                          )}
+                          <span className="text-sm font-medium">{selectedRecipientName}</span>
+                          {recipientMemberCount && (
+                            <span className="ml-1 text-xs text-gray-600 bg-gray-100 px-2 py-0.5 rounded-full">
+                              {recipientMemberCount} membros
+                            </span>
+                          )}
+                          <button 
+                            className="ml-auto text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full p-1 transition-colors"
+                            onClick={handleRemoveRecipient}
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                      ) : (
+                        /* Recipient selection dropdown */
+                        <Select onValueChange={handleRecipientChange}>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder={`Selecione ${recipientType === 'group' ? 'um grupo' : 'um contato'}...`} />
+                          </SelectTrigger>
+                          <SelectContent position="item-aligned">
+                            {recipientType === 'contact' && contacts.map(contact => (
+                              <SelectItem 
+                                key={contact.id} 
+                                value={contact.phoneNumber}
+                              >
+                                {contact.name}
+                              </SelectItem>
+                            ))}
+                            {recipientType === 'group' && groups.map(group => (
+                              <SelectItem 
+                                key={group.id} 
+                                value={group.phoneNumber}
+                              >
+                                {group.name} {group.memberCount && `(${group.memberCount})`}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+              
+              {/* Tab: Novo Contato */}
+              <TabsContent value="new">
+                <div className="space-y-4">
+                  <div className="bg-white p-3 rounded-md shadow-sm border border-gray-100">
+                    <label className="block text-sm font-medium text-[hsl(var(--whatsapp-secondary))] mb-2">
+                      Número do WhatsApp
+                    </label>
+                    <Input 
+                      placeholder="Ex: 55999999999"
+                      value={newRecipientPhone}
+                      onChange={(e) => setNewRecipientPhone(e.target.value)}
+                      className="border-gray-300 focus:border-[hsl(var(--whatsapp-green))] focus:ring focus:ring-[hsl(var(--whatsapp-green))/20]"
+                    />
+                    <p className="text-xs text-gray-500 mt-1 italic">
+                      Inclua o código do país (Ex: 55 para Brasil)
+                    </p>
+                  </div>
+                  
+                  <div className="bg-white p-3 rounded-md shadow-sm border border-gray-100">
+                    <label className="block text-sm font-medium text-[hsl(var(--whatsapp-secondary))] mb-2">
+                      Nome (opcional)
+                    </label>
+                    <Input 
+                      placeholder="Nome do contato"
+                      value={newRecipientName}
+                      onChange={(e) => setNewRecipientName(e.target.value)}
+                      className="border-gray-300 focus:border-[hsl(var(--whatsapp-green))] focus:ring focus:ring-[hsl(var(--whatsapp-green))/20]"
+                    />
+                  </div>
+                  
+                  {newRecipientPhone && (
+                    <div className="bg-[hsl(var(--whatsapp-light-green))/10] rounded-md p-3 border border-[hsl(var(--whatsapp-light-green))/30]">
+                      <p className="flex items-center text-sm">
+                        <Phone className="h-4 w-4 text-[hsl(var(--whatsapp-green))] mr-2" />
+                        <span>Enviando para:</span>
+                        <span className="font-medium ml-1">{formatPhone(formatPhoneNumber(newRecipientPhone))}</span>
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+              
+              {/* Tab: Importar CSV */}
+              <TabsContent value="csv">
+                <div className="space-y-4">
+                  <div className="bg-white p-3 rounded-md shadow-sm border border-gray-100">
+                    <label className="block text-sm font-medium text-[hsl(var(--whatsapp-secondary))] mb-2">
+                      Importar contatos via CSV
+                    </label>
+                    <div className="border-2 border-dashed rounded-md p-4 text-center bg-gray-50">
+                      <input 
+                        type="file"
+                        ref={fileInputRef}
+                        className="hidden"
+                        accept=".csv,.txt"
+                        onChange={processCSVFile}
+                      />
+                      <Button
+                        variant="outline"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="w-full bg-white hover:bg-gray-50 transition-colors"
+                      >
+                        <Upload className="h-4 w-4 mr-2 text-[hsl(var(--whatsapp-green))]" />
+                        Selecionar arquivo
+                      </Button>
+                      <p className="text-xs text-gray-500 mt-2 italic">
+                        Formato: telefone,nome (um por linha)
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Preview dos contatos importados */}
+                  {showRecipientPreview && (
+                    <div className="bg-white p-3 rounded-md shadow-sm border border-gray-100">
+                      <div className="flex justify-between items-center mb-2">
+                        <label className="block text-sm font-medium text-[hsl(var(--whatsapp-secondary))]">
+                          Contatos importados ({csvRecipients.length})
+                        </label>
+                        {csvRecipients.length > 0 && (
+                          <button 
+                            className="text-xs text-[hsl(var(--whatsapp-dark-green))] hover:underline"
+                            onClick={() => setShowRecipientPreview(false)}
+                          >
+                            Ocultar
+                          </button>
+                        )}
+                      </div>
+                      
+                      {csvErrors.length > 0 && (
+                        <Alert variant="destructive" className="mb-3">
+                          <AlertCircle className="h-4 w-4" />
+                          <AlertTitle>Erros na importação</AlertTitle>
+                          <AlertDescription>
+                            <div className="max-h-20 overflow-y-auto text-xs">
+                              {csvErrors.map((error, i) => (
+                                <div key={i}>{error}</div>
+                              ))}
+                            </div>
+                          </AlertDescription>
+                        </Alert>
+                      )}
+                      
+                      {csvRecipients.length > 0 && (
+                        <div className="border rounded-md overflow-hidden shadow-sm">
+                          <div className="max-h-32 overflow-y-auto">
+                            <table className="min-w-full">
+                              <thead className="bg-gray-50 text-xs">
+                                <tr>
+                                  <th className="px-3 py-2 text-left">Telefone</th>
+                                  <th className="px-3 py-2 text-left">Nome</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-200 text-xs bg-white">
+                                {csvRecipients.map((recipient, index) => (
+                                  <tr key={index} className="hover:bg-gray-50">
+                                    <td className="px-3 py-2 font-medium">{formatPhone(recipient.phoneNumber)}</td>
+                                    <td className="px-3 py-2">{recipient.name || '-'}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Progresso de envio em massa */}
+                      {isBulkSending && (
+                        <div className="mt-3 bg-gray-50 p-3 rounded-md border border-gray-200">
+                          <div className="flex justify-between text-xs mb-1 font-medium">
+                            <span>Progresso do envio</span>
+                            <span>{bulkProgress}%</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div 
+                              className="bg-[hsl(var(--whatsapp-green))] h-2 rounded-full" 
+                              style={{ width: `${bulkProgress}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Lista de falhas */}
+                      {failedRecipients.length > 0 && (
+                        <div className="mt-3">
+                          <Alert variant="destructive" className="mb-3">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertTitle>Falhas de envio</AlertTitle>
+                            <AlertDescription>
+                              <div className="max-h-20 overflow-y-auto text-xs">
+                                {failedRecipients.map((phone, i) => (
+                                  <div key={i}>Falha ao enviar para {formatPhone(phone)}</div>
+                                ))}
+                              </div>
+                            </AlertDescription>
+                          </Alert>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+          
+          {/* Message editor */}
+          <div className="p-4 border-b border-gray-200">
             <label className="block text-sm font-medium text-[hsl(var(--whatsapp-secondary))] mb-2">
               Mensagem
             </label>
-            <RichTextEditor
-              value={message}
-              onChange={setMessage}
-              placeholder="Digite sua mensagem aqui..."
+            <div className="bg-white p-3 rounded-md shadow-sm border border-gray-100">
+              <RichTextEditor 
+                value={message}
+                onChange={setMessage}
+                placeholder="Digite sua mensagem aqui..."
+              />
+            </div>
+          </div>
+        
+          {/* Media attachment */}
+          <div className="p-4 border-b border-gray-200">
+            <FileUploader 
+              onFileUploaded={(fileData) => {
+                // Atualizar todos os estados relacionados a mídia
+                setHasMedia(fileData.hasMedia);
+                setMediaFile(fileData.mediaFile);
+                setMediaType(fileData.mediaType);
+                setMediaPath(fileData.mediaPath);
+                setMediaName(fileData.mediaName);
+                setMediaCaption(fileData.mediaCaption);
+              }} 
             />
           </div>
-        </div>
-        
-        {/* Media attachment */}
-        <div className="p-4 border-b border-gray-200">
-          <FileUploader 
-            onFileUploaded={(fileData) => {
-              // Atualizar todos os estados relacionados a mídia
-              setHasMedia(fileData.hasMedia);
-              setMediaFile(fileData.mediaFile);
-              setMediaType(fileData.mediaType);
-              setMediaPath(fileData.mediaPath);
-              setMediaName(fileData.mediaName);
-              setMediaCaption(fileData.mediaCaption);
-            }} 
-          />
-        </div>
-        
-        {/* Scheduling options */}
-        <div className="p-4 border-b border-gray-200">
-          <div className="bg-white p-3 rounded-md shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center">
-                <Checkbox
-                  id="schedule"
-                  checked={isScheduled}
-                  onCheckedChange={(checked) => setIsScheduled(checked as boolean)}
-                  className="border-[hsl(var(--whatsapp-green))] data-[state=checked]:bg-[hsl(var(--whatsapp-green))]"
-                />
-                <label htmlFor="schedule" className="ml-2 text-sm font-medium">
-                  Agendar envio
-                </label>
-              </div>
-              
-              <div className="text-xs text-[hsl(var(--whatsapp-secondary))] bg-gray-100 px-2 py-1 rounded-full flex items-center">
-                <Clock className="h-3 w-3 inline mr-1" />
-                <span>São Paulo (GMT-3)</span>
-              </div>
+          
+          {/* Schedule option */}
+          <div className="p-4 border-b border-gray-200">
+            <div className="flex items-center mb-3">
+              <Checkbox 
+                id="schedule"
+                checked={isScheduled}
+                onCheckedChange={(checked) => setIsScheduled(!!checked)} 
+              />
+              <label htmlFor="schedule" className="ml-2 text-sm font-medium cursor-pointer flex items-center">
+                <Clock className="h-4 w-4 mr-1 text-[hsl(var(--whatsapp-green))]" />
+                Agendar envio
+              </label>
             </div>
             
             {isScheduled && (
-              <div className="grid grid-cols-2 gap-3 mt-3 bg-[hsl(var(--whatsapp-light-green))/5] p-3 rounded-md border border-[hsl(var(--whatsapp-light-green))/20]">
+              <div className="grid grid-cols-2 gap-4 mt-2">
                 <div>
-                  <label className="block text-xs font-medium text-[hsl(var(--whatsapp-dark-green))] mb-1">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
                     Data
                   </label>
-                  <input
+                  <Input 
                     type="date"
-                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[hsl(var(--whatsapp-green))] focus:ring focus:ring-[hsl(var(--whatsapp-green))/20] text-sm"
                     value={scheduleDate}
                     onChange={(e) => setScheduleDate(e.target.value)}
                     min={new Date().toISOString().split('T')[0]}
+                    className="text-sm border-gray-300 focus:border-[hsl(var(--whatsapp-green))] focus:ring focus:ring-[hsl(var(--whatsapp-green))/20]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-[hsl(var(--whatsapp-dark-green))] mb-1">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
                     Hora
                   </label>
-                  <input
+                  <Input 
                     type="time"
-                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[hsl(var(--whatsapp-green))] focus:ring focus:ring-[hsl(var(--whatsapp-green))/20] text-sm"
                     value={scheduleTime}
                     onChange={(e) => setScheduleTime(e.target.value)}
+                    className="text-sm border-gray-300 focus:border-[hsl(var(--whatsapp-green))] focus:ring focus:ring-[hsl(var(--whatsapp-green))/20]"
                   />
                 </div>
               </div>
             )}
           </div>
         </div>
-      </div>
-      
-      {/* Action buttons */}
-      <div className="p-4 bg-gray-50 border-t border-gray-200 flex-shrink-0">
-        <Button
-          className="w-full bg-[hsl(var(--whatsapp-green))] hover:bg-[hsl(var(--whatsapp-dark-green))] text-white rounded-lg py-6 font-medium mb-3 flex items-center justify-center transition-colors"
-          onClick={() => handleSendMessage(true)}
-          disabled={
-            (activeTab === 'saved' && !selectedRecipient) || 
-            (activeTab === 'new' && !newRecipientPhone) || 
-            (activeTab === 'csv' && (!csvRecipients.length || isBulkSending)) || 
-            !message.trim() || 
-            isSending
-          }
-        >
-          {isSending || isBulkSending ? (
-            <Spinner className="h-5 w-5 mr-2" />
-          ) : (
-            <Send className="h-5 w-5 mr-2" />
-          )}
-          <span>
-            {activeTab === 'csv' 
-              ? `Enviar para ${csvRecipients.length} contatos` 
-              : 'Enviar agora'
-            }
-          </span>
-        </Button>
         
-        <Button
-          variant="outline"
-          className="w-full border-2 border-[hsl(var(--whatsapp-green))] text-[hsl(var(--whatsapp-dark-green))] hover:bg-[hsl(var(--whatsapp-light-green))/10] rounded-lg py-6 font-medium flex items-center justify-center transition-colors"
-          onClick={() => handleSendMessage(false)}
-          disabled={
-            !isScheduled || 
-            (activeTab === 'saved' && !selectedRecipient) || 
-            (activeTab === 'new' && !newRecipientPhone) || 
-            (activeTab === 'csv' && (!csvRecipients.length || isBulkSending)) || 
-            !message.trim() || 
-            isSending
-          }
-        >
-          <Clock className="h-5 w-5 mr-2" />
-          <span>
-            {activeTab === 'csv' 
-              ? `Agendar para ${csvRecipients.length} contatos` 
-              : 'Agendar'
-            }
-          </span>
-        </Button>
+        {/* Footer with actions */}
+        <div className="p-4 bg-gray-50 border-t border-gray-200">
+          <div className="flex justify-between">
+            <Button
+              variant="outline"
+              onClick={handleClose}
+              className="border-gray-300 text-gray-600 hover:bg-gray-50"
+            >
+              Cancelar
+            </Button>
+            
+            <div className="flex gap-2">
+              {isScheduled && (
+                <Button
+                  onClick={() => handleSendMessage(false)}
+                  className="bg-[hsl(var(--whatsapp-green))] hover:bg-[hsl(var(--whatsapp-dark-green))] text-white flex items-center"
+                  disabled={isSending}
+                >
+                  {isSending ? (
+                    <Spinner className="mr-2 h-4 w-4" />
+                  ) : (
+                    <Clock className="mr-2 h-4 w-4" />
+                  )}
+                  Agendar
+                </Button>
+              )}
+              
+              <Button
+                onClick={() => handleSendMessage(true)}
+                className="bg-[hsl(var(--whatsapp-green))] hover:bg-[hsl(var(--whatsapp-dark-green))] text-white flex items-center"
+                disabled={isSending}
+              >
+                {isSending ? (
+                  <Spinner className="mr-2 h-4 w-4" />
+                ) : (
+                  <Send className="mr-2 h-4 w-4" />
+                )}
+                Enviar agora
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
