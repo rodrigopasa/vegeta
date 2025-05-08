@@ -3,6 +3,7 @@ import { useWhatsApp } from '@/contexts/WhatsAppContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Spinner } from '@/components/Spinner';
+import { QRCodeSVG } from 'qrcode.react';
 
 interface QRCodeModalProps {
   isOpen: boolean;
@@ -26,11 +27,13 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ isOpen, onClose }) => {
           {qrCode ? (
             <div className="bg-gray-100 p-4 rounded-lg flex items-center justify-center">
               <div className="bg-white p-3 inline-block">
-                {/* Use react-qrcode to render the QR code */}
-                <img 
-                  src={`data:image/svg+xml;utf8,${encodeURIComponent(qrCode)}`} 
-                  alt="QR Code para WhatsApp"
-                  className="h-60 w-60"
+                <QRCodeSVG 
+                  value={qrCode} 
+                  size={240}
+                  bgColor={"#ffffff"}
+                  fgColor={"#000000"}
+                  level={"L"}
+                  includeMargin={true}
                 />
               </div>
             </div>
