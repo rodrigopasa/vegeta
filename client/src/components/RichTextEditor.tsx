@@ -132,7 +132,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
       <div className="flex items-center border-b border-gray-300 p-2 bg-green-50">
         <button
           type="button"
-          className="p-1 text-green-700 hover:text-green-900 hover:bg-green-100 rounded mr-1"
+          className="p-2 text-green-700 hover:text-green-900 hover:bg-green-100 rounded mr-1 w-8 h-8 flex items-center justify-center"
           onClick={() => formatText('bold')}
           title="Bold (WhatsApp: *text*)"
         >
@@ -140,7 +140,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         </button>
         <button
           type="button"
-          className="p-1 text-green-700 hover:text-green-900 hover:bg-green-100 rounded mr-1"
+          className="p-2 text-green-700 hover:text-green-900 hover:bg-green-100 rounded mr-1 w-8 h-8 flex items-center justify-center"
           onClick={() => formatText('italic')}
           title="Italic (WhatsApp: _text_)"
         >
@@ -148,7 +148,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         </button>
         <button
           type="button"
-          className="p-1 text-green-700 hover:text-green-900 hover:bg-green-100 rounded mr-1"
+          className="p-2 text-green-700 hover:text-green-900 hover:bg-green-100 rounded mr-1 w-8 h-8 flex items-center justify-center"
           onClick={() => formatText('strikethrough')}
           title="Strikethrough (WhatsApp: ~text~)"
         >
@@ -156,7 +156,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         </button>
         <button
           type="button"
-          className="p-1 text-green-700 hover:text-green-900 hover:bg-green-100 rounded mr-1"
+          className="p-2 text-green-700 hover:text-green-900 hover:bg-green-100 rounded mr-1 w-8 h-8 flex items-center justify-center"
           onClick={() => formatText('link')}
           title="Link"
         >
@@ -169,7 +169,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
           <PopoverTrigger asChild>
             <button
               type="button"
-              className="p-1 text-amber-500 hover:text-amber-600 hover:bg-green-100 rounded"
+              className="p-2 text-amber-500 hover:text-amber-600 hover:bg-green-100 rounded w-8 h-8 flex items-center justify-center"
               title="Emoji"
             >
               <i className="far fa-smile"></i>
@@ -200,13 +200,13 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="p-1 text-blue-500 hover:text-blue-700 hover:bg-green-100 rounded ml-1"
+              className="p-2 text-blue-500 hover:text-blue-700 hover:bg-green-100 rounded ml-1 w-8 h-8 flex items-center justify-center"
               title="Variáveis"
             >
               <i className="fas fa-code"></i>
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="bg-white border shadow-md rounded-md min-w-40 z-50">
+          <DropdownMenuContent className="bg-white border shadow-md rounded-md min-w-40 z-[1000]">
             <DropdownMenuLabel className="text-blue-700">Inserir variáveis</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
@@ -228,13 +228,13 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="p-1 text-purple-500 hover:text-purple-700 hover:bg-green-100 rounded ml-1"
+              className="p-2 text-purple-500 hover:text-purple-700 hover:bg-green-100 rounded ml-1 w-8 h-8 flex items-center justify-center"
               title="Menções"
             >
               <i className="fas fa-at"></i>
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="bg-white border shadow-md rounded-md min-w-48 max-h-64 overflow-y-auto z-50">
+          <DropdownMenuContent className="bg-white border shadow-md rounded-md min-w-48 max-h-64 overflow-y-auto z-[1000]">
             <DropdownMenuLabel className="text-purple-700">Contatos</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
@@ -270,7 +270,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         {/* File attachment (disabled for now) */}
         <button
           type="button"
-          className="p-1 text-gray-600 hover:text-gray-800 opacity-50 cursor-not-allowed ml-1"
+          className="p-2 text-gray-600 hover:text-gray-800 opacity-50 cursor-not-allowed ml-1 w-8 h-8 flex items-center justify-center"
           title="File attachment (Disabled)"
           disabled
         >
