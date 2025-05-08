@@ -19,7 +19,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       '/api/login', 
       '/api/register', 
       '/api/users/count', 
-      '/api/user'
+      '/api/user',
+      '/static-login.html'
     ];
     
     // Verifica se é uma rota pública ou se está autenticado
@@ -35,8 +36,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return next();
     }
     
-    // Retorna erro 401 para rotas protegidas não autenticadas
-    res.status(401).json({ error: 'Unauthorized' });
+    // Redireciona para a página de login estática
+    res.redirect('/static-login.html');
   });
 
   // Rota para verificar a contagem de usuários
@@ -77,6 +78,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.status(500).json({ error: (error as Error).message });
       }
     }
+  });
+
+  // Rota direta para a página de login estática
+  app.get("/static-login.html", (req: Request, res: Response) => {
+    res.sendFile("static-login.html", { root: "./client" });
+  });
+  
+  // Rota para raiz - Se não houver usuários, redirecionar para página de login estática
+  app.get("/", async (req: Request, res: Response, next: NextFunction) => {
+    if (!req.isAuthenticated()) {
+      try {
+        const count = await storage.getUserCount();
+        if (count === 0) {
+          // Não há usuários, mostrar página de criação de conta
+          return res.redirect('/static-login.html');
+        } else {
+          // Há usuários, mas não está autenticado, mostrar página de login
+          return res.redirect('/static-login.html');
+        }
+      } catch (error) {
+        console.error("Erro ao verificar usuários:", error);
+        return res.redirect('/static-login.html');
+      }
+    }
+    // Se estiver autenticado, continuar com o frontend normal
+    next();
   });
 
   const httpServer = createServer(app);

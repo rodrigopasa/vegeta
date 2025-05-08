@@ -1,0 +1,118 @@
+[Report Only] Refused to execute inline script because it violates the following Content Security Policy directive: "script-src 'none'". Either the 'unsafe-inline' keyword, a hash ('sha256-zhWoaWPdJO2Gb9oIKgFyVgl2rjDG0L0TSr4/BIhIhS8='), or a nonce ('nonce-...') is required to enable inline execution.
+
+WhatsappScheduler:144 [Report Only] Refused to execute inline script because it violates the following Content Security Policy directive: "script-src 'none'". Either the 'unsafe-inline' keyword, a hash ('sha256-Q2BC+6wvEMMGAG5ptiy0mdlUVz5ymLU+2wnaD11rhyc='), or a nonce ('nonce-...') is required to enable inline execution.
+
+WhatsappScheduler:147 [Report Only] Refused to execute inline script because it violates the following Content Security Policy directive: "script-src 'none'". Either the 'unsafe-inline' keyword, a hash ('sha256-XYvVliZ7kJ9JIDhACMzGUvidf8E8T+euknSiwFmyDfg='), or a nonce ('nonce-...') is required to enable inline execution.
+
+WhatsappScheduler:147 [Report Only] Refused to execute inline script because it violates the following Content Security Policy directive: "script-src 'none'". Either the 'unsafe-inline' keyword, a hash ('sha256-q0uYXd/EjY8dh9TMB0fCzZ6buPPvS6FpeCcVGhF/1dU='), or a nonce ('nonce-...') is required to enable inline execution.
+
+WhatsappScheduler:147 [Report Only] Refused to execute inline script because it violates the following Content Security Policy directive: "script-src 'none'". Either the 'unsafe-inline' keyword, a hash ('sha256-pBg1xo4vlJDpEROZNxy8BfTMsGdiDZ4YChhw83NYDz0='), or a nonce ('nonce-...') is required to enable inline execution.
+
+WhatsappScheduler:147 [Report Only] Refused to execute inline script because it violates the following Content Security Policy directive: "script-src 'none'". Either the 'unsafe-inline' keyword, a hash ('sha256-07l5B4sWF6cor6yDQ+CQBYw+BXfYaB+C6wxFZmj0wqo='), or a nonce ('nonce-...') is required to enable inline execution.
+
+106[Report Only] Refused to load the script '<URL>' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+WhatsappScheduler:150 [Report Only] Refused to execute inline script because it violates the following Content Security Policy directive: "script-src 'none'". Either the 'unsafe-inline' keyword, a hash ('sha256-oYWwBc09SvWv7bl3QueQb/RtarF+XV9gMwpafB6Ijik='), or a nonce ('nonce-...') is required to enable inline execution.
+
+_app-16789ea4b26b3304.js:1 [Report Only] Refused to create a worker from 'https://replit.com/public/stallwart.build.js' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'worker-src' was not explicitly set, so 'script-src' is used as a fallback.
+
+1335-d64750869e005be1.js:1 [Report Only] Refused to evaluate a string as JavaScript because 'unsafe-eval' is not an allowed source of script in the following Content Security Policy directive: "script-src 'none'".
+
+1335-d64750869e005be1.js:1 [Report Only] Refused to evaluate a string as JavaScript because 'unsafe-eval' is not an allowed source of script in the following Content Security Policy directive: "script-src 'none'".
+
+6772-9484cbd8468b41c6.js:1 Replit version 5783466c, pid2 version 0.0.1281
+125[Report Only] Refused to connect to '<URL>' because it violates the following Content Security Policy directive: "connect-src 'none'".
+
+_app-16789ea4b26b3304.js:13 
+      /////////////////////
+   ///////////////////////////
+  ////////@@@@@@@//////////////
+  ////////@@@@@@@//////////////
+  ////////@@@@@@@//////////////        Curious and driven?
+  ///////////////@@@@@@@///////        Work with us!
+  ///////////////@@@@@@@///////
+  ///////////////@@@@@@@///////        https://join.replit.com/hack.with.us
+  ////////@@@@@@@//////////////
+  ////////@@@@@@@//////////////
+  ////////@@@@@@#//////////////
+   ///////////////////////////
+      /////////////////////
+      
+_app-16789ea4b26b3304.js:13 [LaunchDarkly] LaunchDarkly client initialized
+_app-16789ea4b26b3304.js:15 [Report Only] Refused to create a worker from 'https://replit.com/service-worker.js' because it violates the following Content Security Policy directive: "script-src 'none'". Note that 'worker-src' was not explicitly set, so 'script-src' is used as a fallback.
+
+WhatsappScheduler:1 Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner.
+framework-55231f216c80dbdd.js:1 Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+_ @ framework-55231f216c80dbdd.js:1Understand this error
+framework-55231f216c80dbdd.js:1 Unrecognized feature: 'ambient-light-sensor'.
+_ @ framework-55231f216c80dbdd.js:1Understand this warning
+framework-55231f216c80dbdd.js:1 Unrecognized feature: 'battery'.
+_ @ framework-55231f216c80dbdd.js:1Understand this warning
+framework-55231f216c80dbdd.js:1 Unrecognized feature: 'execution-while-not-rendered'.
+_ @ framework-55231f216c80dbdd.js:1Understand this warning
+framework-55231f216c80dbdd.js:1 Unrecognized feature: 'execution-while-out-of-viewport'.
+_ @ framework-55231f216c80dbdd.js:1Understand this warning
+framework-55231f216c80dbdd.js:1 Unrecognized feature: 'layout-animations'.
+_ @ framework-55231f216c80dbdd.js:1Understand this warning
+framework-55231f216c80dbdd.js:1 Unrecognized feature: 'legacy-image-formats'.
+_ @ framework-55231f216c80dbdd.js:1Understand this warning
+framework-55231f216c80dbdd.js:1 Unrecognized feature: 'navigation-override'.
+_ @ framework-55231f216c80dbdd.js:1Understand this warning
+framework-55231f216c80dbdd.js:1 Unrecognized feature: 'oversized-images'.
+_ @ framework-55231f216c80dbdd.js:1Understand this warning
+framework-55231f216c80dbdd.js:1 Unrecognized feature: 'publickey-credentials'.
+_ @ framework-55231f216c80dbdd.js:1Understand this warning
+framework-55231f216c80dbdd.js:1 Unrecognized feature: 'speaker-selection'.
+_ @ framework-55231f216c80dbdd.js:1Understand this warning
+framework-55231f216c80dbdd.js:1 Unrecognized feature: 'unoptimized-images'.
+_ @ framework-55231f216c80dbdd.js:1Understand this warning
+framework-55231f216c80dbdd.js:1 Unrecognized feature: 'unsized-media'.
+_ @ framework-55231f216c80dbdd.js:1Understand this warning
+framework-55231f216c80dbdd.js:1 Unrecognized feature: 'pointer-lock'.
+_ @ framework-55231f216c80dbdd.js:1Understand this warning
+framework-55231f216c80dbdd.js:1 Allow attribute will take precedence over 'allowfullscreen'.
+_ @ framework-55231f216c80dbdd.js:1Understand this warning
+framework-55231f216c80dbdd.js:1 Allow attribute will take precedence over 'allowpaymentrequest'.
+_ @ framework-55231f216c80dbdd.js:1Understand this warning
+framework-55231f216c80dbdd.js:1 Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+_ @ framework-55231f216c80dbdd.js:1Understand this error
+workspace_iframe.html:32 Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.Understand this error
+workspace_iframe.html:32 Unrecognized feature: 'ambient-light-sensor'.Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'battery'.Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'execution-while-not-rendered'.Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'execution-while-out-of-viewport'.Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'layout-animations'.Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'legacy-image-formats'.Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'navigation-override'.Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'oversized-images'.Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'publickey-credentials'.Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'speaker-selection'.Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'unoptimized-images'.Understand this warning
+workspace_iframe.html:32 Unrecognized feature: 'unsized-media'.Understand this warning
+workspace_iframe.html:32 Allow attribute will take precedence over 'allowfullscreen'.Understand this warning
+workspace_iframe.html:32 Allow attribute will take precedence over 'allowpaymentrequest'.Understand this warning
+client:1 
+            
+            
+           Failed to load resource: the server responded with a status of 401 (Unauthorized)Understand this error
+caaff152-3eed-4306-8cac-d35276edebb1-00-izklhcg1fubg.riker.replit.dev/src/main.tsx?v=rfvrZPcHaaAPBVmAhXbr7:1 
+            
+            
+           Failed to load resource: the server responded with a status of 401 (Unauthorized)Understand this error
+@react-refresh:1 
+            
+            
+           Failed to load resource: the server responded with a status of 401 (Unauthorized)Understand this error
+workspace_iframe.html:32 Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.Understand this error
+client:1 
+            
+            
+           Failed to load resource: the server responded with a status of 401 (Unauthorized)Understand this error
+main.tsx:1 
+            
+            
+           Failed to load resource: the server responded with a status of 401 (Unauthorized)Understand this error
+@react-refresh:1 
+            
+            
+           Failed to load resource: the server responded with a status of 401 (Unauthorized)
