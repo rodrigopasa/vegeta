@@ -4,7 +4,7 @@ import RichTextEditor from './RichTextEditor';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { X, Send, Clock, Users, UserCircle, Plus, Phone, Table, Upload, AlertCircle, File } from 'lucide-react';
+import { X, Send, Clock, Users, UserCircle, Plus, Phone, Table, Upload, AlertCircle, Paperclip } from 'lucide-react';
 import { Spinner } from '@/components/Spinner';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -68,6 +68,7 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
   const [mediaName, setMediaName] = useState<string>('');
   const [mediaCaption, setMediaCaption] = useState<string>('');
   const [isUploading, setIsUploading] = useState<boolean>(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const mediaInputRef = useRef<HTMLInputElement>(null);
 
   // Reset form when closing
@@ -797,7 +798,7 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
         {hasMedia && mediaFile ? (
           <div className="border rounded-md p-3 mb-3">
             <div className="flex items-center">
-              <File className="h-5 w-5 text-gray-500 mr-2" />
+              <Paperclip className="h-5 w-5 text-gray-500 mr-2" />
               <div className="overflow-hidden">
                 <p className="font-medium text-sm truncate">{mediaName}</p>
                 <p className="text-xs text-gray-500">{(mediaFile.size / 1024).toFixed(1)} KB</p>
