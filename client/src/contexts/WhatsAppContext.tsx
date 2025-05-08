@@ -174,6 +174,20 @@ export const WhatsAppProvider: React.FC<WhatsAppProviderProps> = ({ children }) 
             });
             fetchMessages();
             break;
+            
+          case 'MESSAGE_STATUS_UPDATE':
+            // Atualizar status de uma mensagem sem precisar recarregar tudo
+            setMessages(prevMessages => 
+              prevMessages.map(msg => {
+                // Em um cenário real, precisaríamos armazenar o WhatsApp message ID
+                // junto com nossa mensagem para fazer este match de forma mais precisa
+                if (msg.status === 'sent' || msg.status === 'delivered') {
+                  return { ...msg, status: data.payload.status };
+                }
+                return msg;
+              })
+            );
+            break;
         }
       } catch (error) {
         console.error('Error processing WebSocket message:', error);

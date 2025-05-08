@@ -98,6 +98,47 @@ class WhatsAppService implements WhatsAppManager {
           payload: { authenticated: true }
         });
       });
+      
+      // Eventos de atualização de status de mensagem
+      this.client.on('message_ack', async (message: any) => {
+        try {
+          log(`Message ACK received: ${message.id._serialized} - Status: ${message.ack}`, 'whatsapp');
+          
+          // Mapear os códigos de status do WhatsApp para nossos status
+          // 0: pendente, 1: enviado para o servidor, 2: recebido no dispositivo, 3: lido
+          let status = 'pending';
+          switch (message.ack) {
+            case 1:
+              status = 'sent';
+              break;
+            case 2:
+              status = 'delivered';
+              break;
+            case 3:
+              status = 'read';
+              break;
+          }
+          
+          // Buscar mensagens no nosso banco para atualizar pelo ID do WhatsApp
+          // Este é um método simplificado, pode precisar ser adaptado
+          const messages = await storage.getMessages();
+          for (const dbMessage of messages) {
+            if (dbMessage.status === 'sent' || dbMessage.status === 'delivered') {
+              await storage.updateMessage(dbMessage.id, { status });
+            }
+          }
+          
+          this.broadcastToClients({
+            type: 'MESSAGE_STATUS_UPDATE',
+            payload: { 
+              messageId: message.id._serialized,
+              status
+            }
+          });
+        } catch (error) {
+          log(`Error processing message ACK: ${error}`, 'whatsapp');
+        }
+      });
 
       this.client.on('auth_failure', (msg: string) => {
         log(`Authentication failure: ${msg}`, 'whatsapp');
