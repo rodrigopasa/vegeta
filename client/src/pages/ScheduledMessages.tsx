@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Search, Calendar, Users, User, Edit, Trash2, AlertCircle } from 'lucide-react';
-import { formatDate, getStatusColor, getFormattedStatus, getMessagePreview } from '@/lib/utils';
+import { formatDate, formatDateLong, getStatusColor, getFormattedStatus, getMessagePreview } from '@/lib/utils';
 import MessagePanel from '@/components/MessagePanel';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -31,19 +31,8 @@ const ScheduledMessages: React.FC = () => {
     message.content.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Formatar data para o timezone de São Paulo
-  const formatDateSP = (date: Date | string | null | undefined): string => {
-    if (!date) return "Data não definida";
-    
-    try {
-      const dateObj = typeof date === "string" ? parseISO(date) : date;
-      // Formato: dia da semana, dia de mês de ano às HH:MM (horário de São Paulo)
-      return format(dateObj, "EEEE, dd 'de' MMMM 'de' yyyy 'às' HH:mm 'h' (BRT)", { locale: ptBR });
-    } catch (error) {
-      console.error("Erro ao formatar data:", error);
-      return "Data inválida";
-    }
-  };
+  // Usamos a função formatDateLong de utils.ts, que formata a data para o 
+  // timezone de São Paulo no formato completo (dia da semana, dia, mês, ano, hora)
 
   // Confirmação de exclusão
   const handleDeleteClick = (id: number) => {
@@ -126,7 +115,7 @@ const ScheduledMessages: React.FC = () => {
                       <div className="flex items-center mt-1">
                         <Calendar className="h-3 w-3 text-[hsl(var(--whatsapp-secondary))] mr-1" />
                         <span className="text-xs text-[hsl(var(--whatsapp-secondary))]">
-                          Agendada para: {formatDateSP(message.scheduledFor)}
+                          Agendada para: {formatDateLong(message.scheduledFor)}
                         </span>
                       </div>
                       <div className="mt-3 text-sm">
@@ -152,7 +141,7 @@ const ScheduledMessages: React.FC = () => {
                         variant="outline" 
                         size="icon" 
                         className="h-8 w-8 text-red-500 hover:text-red-700 border-red-200 hover:border-red-400"
-                        onClick={() => deleteMessage(message.id)}
+                        onClick={() => handleDeleteClick(message.id)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -209,6 +198,38 @@ const ScheduledMessages: React.FC = () => {
           onClose={() => setShowMessagePanel(false)} 
         />
       )}
+
+      {/* Dialog de confirmação de exclusão */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
+              Confirmar exclusão
+            </DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja excluir esta mensagem agendada?
+              Esta ação não poderá ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="sm:justify-between">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsDeleteDialogOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={confirmDelete}
+            >
+              Excluir mensagem
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

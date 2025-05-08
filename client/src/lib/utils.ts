@@ -6,7 +6,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatDate(date: Date | string | undefined | null): string {
-  if (!date) return '';
+  if (!date) return 'Não agendada';
   
   const dateObj = typeof date === 'string' ? new Date(date) : date;
   
@@ -16,7 +16,8 @@ export function formatDate(date: Date | string | undefined | null): string {
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-    timeZone: 'America/Sao_Paulo'
+    timeZone: 'America/Sao_Paulo', // Horário de São Paulo
+    timeZoneName: 'short',
   }).format(dateObj);
 }
 
@@ -84,4 +85,23 @@ export function truncateText(text: string, maxLength: number = 20): string {
   if (!text) return '';
   if (text.length <= maxLength) return text;
   return text.substring(0, maxLength) + '...';
+}
+
+// Formata data para o padrão completo brasileiro com fuso horário de São Paulo
+export function formatDateLong(date: Date | string | undefined | null): string {
+  if (!date) return 'Não agendada';
+  
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  const options: Intl.DateTimeFormatOptions = {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'America/Sao_Paulo', // Horário de São Paulo
+  };
+  
+  // Formata a data e adiciona o sufixo (BRT)
+  return new Intl.DateTimeFormat('pt-BR', options).format(dateObj) + ' (BRT)';
 }
