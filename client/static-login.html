@@ -102,6 +102,29 @@
   </div>
 
   <script>
+    // Verificar se existem usuários ao carregar a página
+    window.addEventListener('DOMContentLoaded', async function() {
+      try {
+        const countResponse = await fetch('/api/users/count');
+        const { count } = await countResponse.json();
+        
+        // Atualizar texto do botão e título da página
+        const loginButton = document.getElementById('login-button');
+        const pageTitle = document.querySelector('h1');
+        
+        if (count === 0) {
+          loginButton.textContent = 'Criar Conta Administrador';
+          pageTitle.textContent = 'PaZap - Criar Conta';
+          document.title = 'PaZap - Criar Conta Administrador';
+        } else {
+          loginButton.textContent = 'Entrar';
+          pageTitle.textContent = 'PaZap - Login';
+        }
+      } catch (error) {
+        console.error('Erro ao verificar usuários:', error);
+      }
+    });
+
     document.getElementById('login-button').addEventListener('click', async function() {
       const username = document.getElementById('username').value;
       const password = document.getElementById('password').value;
@@ -129,7 +152,8 @@
         });
         
         if (!response.ok) {
-          throw new Error(count === 0 ? 'Erro ao criar conta' : 'Credenciais inválidas');
+          const errorData = await response.json();
+          throw new Error(errorData.error || (count === 0 ? 'Erro ao criar conta' : 'Credenciais inválidas'));
         }
         
         // Login bem-sucedido, recarregar a página
