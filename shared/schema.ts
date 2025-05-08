@@ -42,6 +42,12 @@ export const messages = pgTable("messages", {
   status: text("status").notNull().default("scheduled"), // scheduled, sent, delivered, read, failed
   errorMessage: text("error_message"),
   createdAt: timestamp("created_at").defaultNow(),
+  // File/Media related fields
+  hasMedia: boolean("has_media").default(false),
+  mediaType: text("media_type"), // image, document, video, audio
+  mediaPath: text("media_path"),
+  mediaName: text("media_name"),
+  mediaCaption: text("media_caption"),
 });
 
 export const insertMessageSchema = createInsertSchema(messages).omit({
@@ -67,6 +73,11 @@ export const messageWithValidationSchema = insertMessageSchema.extend({
   content: z.string().min(1, "Message content is required"),
   recipient: z.string().min(1, "Recipient is required"),
   scheduledFor: z.date().optional(),
+  hasMedia: z.boolean().optional(),
+  mediaType: z.string().optional(),
+  mediaPath: z.string().optional(),
+  mediaName: z.string().optional(),
+  mediaCaption: z.string().optional(),
 });
 
 export type MessageWithValidation = z.infer<typeof messageWithValidationSchema>;

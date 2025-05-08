@@ -1,5 +1,5 @@
 // Importar WhatsApp Web.js como CommonJS
-import { Client } from "whatsapp-web.js";
+import { Client, MessageMedia } from "whatsapp-web.js";
 // Tipos para TypeScript
 type WhatsAppClient = any;
 import { storage } from "./storage";
@@ -8,6 +8,9 @@ import { WebSocketServer } from "ws";
 import { Server } from "http";
 import { log } from "./vite";
 import WebSocket from "ws";
+import fs from 'fs';
+import path from 'path';
+import mime from 'mime-types';
 
 interface WhatsAppManager {
   client: WhatsAppClient | null;
