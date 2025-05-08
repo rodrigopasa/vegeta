@@ -1,0 +1,87 @@
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+
+export function formatDate(date: Date | string | undefined | null): string {
+  if (!date) return '';
+  
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  
+  return new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'America/Sao_Paulo'
+  }).format(dateObj);
+}
+
+export function formatPhone(phone: string): string {
+  // Handle group IDs or already formatted phone numbers
+  if (phone.includes('@g.us') || phone.includes('@c.us')) {
+    return phone;
+  }
+  
+  // Remove all non-numeric characters
+  const numericPhone = phone.replace(/\D/g, '');
+  
+  // Brazilian phone number formatting
+  if (numericPhone.length === 11) {
+    return `+55 ${numericPhone.slice(0, 2)} ${numericPhone.slice(2, 7)}-${numericPhone.slice(7)}`;
+  } else if (numericPhone.length === 10) {
+    return `+55 ${numericPhone.slice(0, 2)} ${numericPhone.slice(2, 6)}-${numericPhone.slice(6)}`;
+  } else {
+    return phone; // Return original if format is unknown
+  }
+}
+
+export function getStatusColor(status: string): string {
+  switch (status) {
+    case 'sent':
+    case 'delivered':
+    case 'read':
+      return 'bg-[hsl(var(--status-success))] text-white';
+    case 'failed':
+      return 'bg-[hsl(var(--status-error))] text-white';
+    case 'scheduled':
+    case 'pending':
+    case 'sending':
+      return 'bg-[hsl(var(--status-pending))] text-white';
+    default:
+      return 'bg-gray-500 text-white';
+  }
+}
+
+export function getFormattedStatus(status: string): string {
+  switch (status) {
+    case 'sent':
+      return 'Enviada';
+    case 'delivered':
+      return 'Entregue';
+    case 'read':
+      return 'Lida';
+    case 'failed':
+      return 'Falha';
+    case 'scheduled':
+      return 'Agendada';
+    case 'sending':
+      return 'Enviando';
+    default:
+      return status.charAt(0).toUpperCase() + status.slice(1);
+  }
+}
+
+export function getMessagePreview(content: string, maxLength: number = 50): string {
+  if (content.length <= maxLength) return content;
+  return content.substring(0, maxLength) + '...';
+}
+
+export function truncateText(text: string, maxLength: number = 20): string {
+  if (!text) return '';
+  if (text.length <= maxLength) return text;
+  return text.substring(0, maxLength) + '...';
+}
