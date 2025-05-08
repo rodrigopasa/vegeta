@@ -173,8 +173,10 @@
         }, 1000);
         
       } catch (error) {
-        errorMessage.textContent = error.message;
+        console.error("Erro:", error);
+        errorMessage.textContent = error.message || 'Ocorreu um erro ao processar sua solicitação';
         errorMessage.style.display = 'block';
+        errorMessage.style.color = '#e74c3c';
       }
     });
   </script>
