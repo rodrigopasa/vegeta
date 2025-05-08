@@ -175,14 +175,23 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
               <i className="far fa-smile"></i>
             </button>
           </PopoverTrigger>
-          <PopoverContent className="w-full p-0 border-none z-50" align="start" side="bottom">
-            <Picker 
-              data={data} 
-              onEmojiSelect={addEmoji}
-              previewPosition="none"
-              skinTonePosition="none"
-              theme="light"
-            />
+          <PopoverContent 
+            className="w-96 p-0 border-2 border-solid border-gray-200 shadow-lg rounded-md z-[1000]" 
+            align="start" 
+            side="bottom"
+            sideOffset={5}
+            style={{ backgroundColor: '#fff' }}
+          >
+            <div className="emoji-picker-container" style={{ width: '100%', maxHeight: '350px', overflow: 'auto' }}>
+              <Picker 
+                data={data} 
+                onEmojiSelect={addEmoji}
+                previewPosition="none"
+                skinTonePosition="none"
+                theme="light"
+                style={{ width: '100%', height: '350px' }}
+              />
+            </div>
           </PopoverContent>
         </Popover>
         
