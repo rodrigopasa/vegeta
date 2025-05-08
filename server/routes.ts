@@ -12,33 +12,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Configurar autenticação
   setupAuth(app);
   
+  // Rota para verificar a contagem de usuários (pública, sem autenticação)
+  // Deve estar ANTES dos middlewares de proteção
+  app.get("/api/users/count", async (req: Request, res: Response) => {
+    try {
+      // Não precisamos verificar autenticação para essa rota
+      const count = await storage.getUserCount();
+      // Log para debug
+      console.log("User count:", count);
+      res.json({ count });
+    } catch (error) {
+      console.error("Erro ao contar usuários:", error);
+      res.status(500).json({ error: 'Erro ao contar usuários' });
+    }
+  });
+  
   // Definir as rotas públicas da API
   const publicApiRoutes = [
     '/api/login', 
     '/api/register', 
-    '/api/users/count', 
     '/api/user'
   ];
   
   // Os endpoints da API devem ser protegidos mas retornar 401 em vez de redirecionar
   app.use('/api', (req: Request, res: Response, next: NextFunction) => {
     // Verifica se é uma rota pública ou se está autenticado
-    if (publicApiRoutes.includes(req.path) || req.isAuthenticated()) {
+    if (publicApiRoutes.includes(req.path) || req.path === '/api/users/count' || req.isAuthenticated()) {
       return next();
     }
     
     // Retorna 401 para APIs não autenticadas
     res.status(401).json({ error: 'Unauthorized' });
-  });
-
-  // Rota para verificar a contagem de usuários
-  app.get("/api/users/count", async (req: Request, res: Response) => {
-    try {
-      const count = await storage.getUserCount();
-      res.json({ count });
-    } catch (error) {
-      res.status(500).json({ error: 'Erro ao contar usuários' });
-    }
   });
 
   // Rota para registrar um novo usuário (apenas se não houver usuários existentes)
