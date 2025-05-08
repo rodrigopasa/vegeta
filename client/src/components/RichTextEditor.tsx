@@ -129,10 +129,10 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   return (
     <div className="border border-gray-300 rounded-md">
       {/* Toolbar */}
-      <div className="flex items-center border-b border-gray-300 p-2">
+      <div className="flex items-center border-b border-gray-300 p-2 bg-green-50">
         <button
           type="button"
-          className="p-1 text-gray-500 hover:text-gray-700 mr-1"
+          className="p-1 text-green-700 hover:text-green-900 hover:bg-green-100 rounded mr-1"
           onClick={() => formatText('bold')}
           title="Bold (WhatsApp: *text*)"
         >
@@ -140,7 +140,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         </button>
         <button
           type="button"
-          className="p-1 text-gray-500 hover:text-gray-700 mr-1"
+          className="p-1 text-green-700 hover:text-green-900 hover:bg-green-100 rounded mr-1"
           onClick={() => formatText('italic')}
           title="Italic (WhatsApp: _text_)"
         >
@@ -148,7 +148,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         </button>
         <button
           type="button"
-          className="p-1 text-gray-500 hover:text-gray-700 mr-1"
+          className="p-1 text-green-700 hover:text-green-900 hover:bg-green-100 rounded mr-1"
           onClick={() => formatText('strikethrough')}
           title="Strikethrough (WhatsApp: ~text~)"
         >
@@ -156,26 +156,26 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         </button>
         <button
           type="button"
-          className="p-1 text-gray-500 hover:text-gray-700 mr-1"
+          className="p-1 text-green-700 hover:text-green-900 hover:bg-green-100 rounded mr-1"
           onClick={() => formatText('link')}
           title="Link"
         >
           <i className="fas fa-link"></i>
         </button>
-        <div className="h-4 w-px bg-gray-300 mx-1"></div>
+        <div className="h-4 w-px bg-green-300 mx-1"></div>
         
         {/* Emoji picker */}
         <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
           <PopoverTrigger asChild>
             <button
               type="button"
-              className="p-1 text-gray-500 hover:text-gray-700"
+              className="p-1 text-amber-500 hover:text-amber-600 hover:bg-green-100 rounded"
               title="Emoji"
             >
               <i className="far fa-smile"></i>
             </button>
           </PopoverTrigger>
-          <PopoverContent className="w-full p-0 border-none" align="start" side="bottom">
+          <PopoverContent className="w-full p-0 border-none z-50" align="start" side="bottom">
             <Picker 
               data={data} 
               onEmojiSelect={addEmoji}
@@ -191,24 +191,24 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="p-1 text-gray-500 hover:text-gray-700 ml-1"
+              className="p-1 text-blue-500 hover:text-blue-700 hover:bg-green-100 rounded ml-1"
               title="Variáveis"
             >
               <i className="fas fa-code"></i>
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="bg-white border shadow-md rounded-md min-w-40">
-            <DropdownMenuLabel>Inserir variáveis</DropdownMenuLabel>
+          <DropdownMenuContent className="bg-white border shadow-md rounded-md min-w-40 z-50">
+            <DropdownMenuLabel className="text-blue-700">Inserir variáveis</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem onClick={() => insertVariable("{{nome}}")}>
-                <span className="text-sm">Nome do contato</span>
+                <span className="text-sm text-blue-600">Nome do contato</span>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => insertVariable("{{data}}")}>
-                <span className="text-sm">Data atual</span>
+                <span className="text-sm text-blue-600">Data atual</span>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => insertVariable("{{hora}}")}>
-                <span className="text-sm">Hora atual</span>
+                <span className="text-sm text-blue-600">Hora atual</span>
               </DropdownMenuItem>
             </DropdownMenuGroup>
           </DropdownMenuContent>
@@ -219,14 +219,14 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="p-1 text-gray-500 hover:text-gray-700 ml-1"
+              className="p-1 text-purple-500 hover:text-purple-700 hover:bg-green-100 rounded ml-1"
               title="Menções"
             >
               <i className="fas fa-at"></i>
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="bg-white border shadow-md rounded-md min-w-48 max-h-64 overflow-y-auto">
-            <DropdownMenuLabel>Contatos</DropdownMenuLabel>
+          <DropdownMenuContent className="bg-white border shadow-md rounded-md min-w-48 max-h-64 overflow-y-auto z-50">
+            <DropdownMenuLabel className="text-purple-700">Contatos</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               {contacts.slice(0, 10).map((contact) => (
@@ -234,7 +234,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
                   key={contact.id} 
                   onClick={() => insertContactMention(contact)}
                 >
-                  <span className="text-sm">{contact.name}</span>
+                  <span className="text-sm text-purple-600">{contact.name}</span>
                 </DropdownMenuItem>
               ))}
             </DropdownMenuGroup>
@@ -242,14 +242,14 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
             {groups.length > 0 && (
               <>
                 <DropdownMenuSeparator />
-                <DropdownMenuLabel>Grupos</DropdownMenuLabel>
+                <DropdownMenuLabel className="text-purple-700">Grupos</DropdownMenuLabel>
                 <DropdownMenuGroup>
                   {groups.slice(0, 10).map((group) => (
                     <DropdownMenuItem 
                       key={group.id} 
                       onClick={() => insertContactMention(group)}
                     >
-                      <span className="text-sm">{group.name}</span>
+                      <span className="text-sm text-purple-600">{group.name}</span>
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuGroup>
@@ -261,7 +261,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         {/* File attachment (disabled for now) */}
         <button
           type="button"
-          className="p-1 text-gray-500 hover:text-gray-700 opacity-50 cursor-not-allowed ml-1"
+          className="p-1 text-gray-600 hover:text-gray-800 opacity-50 cursor-not-allowed ml-1"
           title="File attachment (Disabled)"
           disabled
         >
