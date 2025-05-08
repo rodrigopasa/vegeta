@@ -156,8 +156,21 @@
           throw new Error(errorData.error || (count === 0 ? 'Erro ao criar conta' : 'Credenciais inválidas'));
         }
         
-        // Login bem-sucedido, recarregar a página
-        window.location.href = '/';
+        // Login bem-sucedido, mostrar mensagem e redirecionar
+        const userData = await response.json();
+        console.log("Sucesso:", userData);
+        
+        // Mostrar mensagem de sucesso antes de redirecionar
+        errorMessage.textContent = count === 0 
+          ? 'Conta criada com sucesso! Redirecionando...' 
+          : 'Login realizado com sucesso! Redirecionando...';
+        errorMessage.style.display = 'block';
+        errorMessage.style.color = '#27ae60';
+        
+        // Dar um pequeno delay antes de redirecionar para a página principal
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 1000);
         
       } catch (error) {
         errorMessage.textContent = error.message;
