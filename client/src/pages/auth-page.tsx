@@ -60,8 +60,12 @@ export default function AuthPage() {
 
   // Redirecionar se o usuário já estiver autenticado
   useEffect(() => {
+    console.log("AuthPage: verificando usuário para redirecionamento", user);
     if (user) {
+      console.log("AuthPage: usuário autenticado, redirecionando para /");
       setLocation('/');
+    } else {
+      console.log("AuthPage: usuário não autenticado, permanecendo na página de login");
     }
   }, [user, setLocation]);
 

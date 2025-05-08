@@ -26,6 +26,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Rota de teste para resetar senha (APENAS PARA DESENVOLVIMENTO)
+  if (process.env.NODE_ENV === 'development') {
+    app.post("/api/reset-password", async (req: Request, res: Response) => {
+      try {
+        const { username, password } = req.body;
+        
+        if (!username || !password) {
+          return res.status(400).json({ error: 'Usuário e senha são obrigatórios' });
+        }
+        
+        const user = await storage.getUserByUsername(username);
+        if (!user) {
+          return res.status(404).json({ error: 'Usuário não encontrado' });
+        }
+        
+        // Hash da nova senha
+        const hashedPassword = await hashPassword(password);
+        
+        // Atualizar a senha no banco de dados
+        await pool.query(
+          'UPDATE users SET password = $1 WHERE id = $2',
+          [hashedPassword, user.id]
+        );
+        
+        console.log(`Senha alterada para o usuário ${username}`);
+        res.json({ success: true, message: `Senha alterada para o usuário ${username}` });
+      } catch (error) {
+        console.error('Erro ao resetar senha:', error);
+        res.status(500).json({ error: 'Erro ao resetar senha', details: (error as Error).message });
+      }
+    });
+  }
+  
   // Rota para registrar um novo usuário (pública, apenas se não houver usuários existentes)
   app.post("/api/register", async (req: Request, res: Response) => {
     try {
@@ -71,7 +104,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     '/api/login', 
     '/api/register', 
     '/api/users/count',
-    '/api/user'
+    '/api/user',
+    '/api/reset-password'
   ];
   
   // Os endpoints da API devem ser protegidos mas retornar 401 em vez de redirecionar
