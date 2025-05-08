@@ -32,7 +32,8 @@ function MinimalApp() {
     fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
+      body: JSON.stringify({ username, password }),
+      credentials: 'include' // Importante: isso garante que os cookies sejam enviados/recebidos
     })
       .then(res => {
         if (!res.ok) {
