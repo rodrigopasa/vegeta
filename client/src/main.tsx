@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client";
 import "./index.css";
-import MinimalApp from "./MinimalApp";
+import App from "./App";
+// import MinimalApp from "./MinimalApp";
 
 // Link to font-awesome for icons
 const fontAwesomeLink = document.createElement('link');
@@ -11,6 +12,6 @@ document.head.appendChild(fontAwesomeLink);
 // Set title
 document.title = "PaZap - Disparador de Mensagens para WhatsApp";
 
-// Usar a versão simplificada do aplicativo para diagnosticar problemas
+// Usando a versão completa do aplicativo
 const root = createRoot(document.getElementById("root")!);
-root.render(<MinimalApp />);
+root.render(<App />);
