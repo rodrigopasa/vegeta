@@ -1,5 +1,5 @@
 import React, { useRef, useState, ChangeEvent } from 'react';
-import { X, UserCircle, Users, Phone, Clock, Upload, Table, Send, MessageCircle } from 'lucide-react';
+import { X, UserCircle, Users, Phone, Clock, Upload, Table, Send, MessageCircle, Loader, CheckCircle } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -283,14 +283,25 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
       const data = await response.json();
       console.log("Upload concluído com sucesso:", data);
       
-      // Garantir que ainda estamos trabalhando com o mesmo arquivo após a operação assíncrona
-      setMediaPath(data.file.path);
+      // Verificar a estrutura da resposta e extrair o caminho do arquivo
+      let filePath = '';
+      if (data && data.file && data.file.path) {
+        filePath = data.file.path;
+      } else if (data && data.path) {
+        filePath = data.path;
+      }
       
-      // Reafirmar o estado após upload bem-sucedido
-      setHasMedia(true);
-      setMediaFile(localFile);
-      setMediaName(localFileName);
-      setMediaType(localFileType);
+      // Garantir que o estado seja mantido consistente
+      if (filePath) {
+        setMediaPath(filePath);
+        // Reforçar o estado para garantir que permanece visível
+        setHasMedia(true);
+        setMediaFile(localFile);
+        setMediaName(localFileName);
+        setMediaType(localFileType);
+      } else {
+        console.error("Formato de resposta inesperado:", data);
+      }
       
       toast({
         title: "Arquivo anexado",
@@ -816,20 +827,33 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
             </div>
             
             {/* Media attachment container - fixed height to prevent layout shift */}
-            <div className="media-attachment-container min-h-[150px] relative">
+            <div className="media-attachment-container min-h-[150px] relative" id="media-container">
               {/* Attached file display */}
-              {hasMedia && mediaFile ? (
+              {(hasMedia && mediaFile) ? (
                 <div className="border rounded-md p-3 bg-[hsl(var(--whatsapp-light-green))/5] border-[hsl(var(--whatsapp-light-green))/20]">
                   <div className="flex items-center">
                     <Paperclip className="h-5 w-5 text-[hsl(var(--whatsapp-green))] mr-2 flex-shrink-0" />
                     <div className="overflow-hidden flex-1">
                       <p className="font-medium text-sm truncate">{mediaName}</p>
-                      <p className="text-xs text-gray-500">{(mediaFile.size / 1024).toFixed(1)} KB</p>
+                      <p className="text-xs text-gray-500">{mediaFile && (mediaFile.size / 1024).toFixed(1)} KB</p>
                     </div>
                     {isUploading && (
                       <Spinner className="ml-auto h-4 w-4 flex-shrink-0" />
                     )}
                   </div>
+                  
+                  {/* Status indicator */}
+                  {isUploading ? (
+                    <div className="mt-2 bg-blue-50 text-blue-700 text-xs p-2 rounded flex items-center">
+                      <Loader className="animate-spin h-3 w-3 mr-2" />
+                      <span>Enviando arquivo... Aguarde por favor.</span>
+                    </div>
+                  ) : mediaPath ? (
+                    <div className="mt-2 bg-green-50 text-green-700 text-xs p-2 rounded flex items-center">
+                      <CheckCircle className="h-3 w-3 mr-2" />
+                      <span>Arquivo anexado com sucesso!</span>
+                    </div>
+                  ) : null}
                   
                   {/* Caption input - only show if upload is complete */}
                   {(mediaPath && !isUploading) && (
