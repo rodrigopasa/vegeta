@@ -21,6 +21,11 @@ interface Message {
   status: string;
   errorMessage?: string;
   createdAt: Date;
+  hasMedia?: boolean;
+  mediaType?: string;
+  mediaPath?: string;
+  mediaName?: string;
+  mediaCaption?: string;
 }
 
 interface WhatsAppContextType {
@@ -33,7 +38,13 @@ interface WhatsAppContextType {
   scheduledMessages: Message[];
   initializeWhatsApp: () => Promise<void>;
   refreshContacts: () => Promise<void>;
-  sendMessage: (recipient: string, content: string, scheduledFor?: Date, recipientName?: string, isGroup?: boolean) => Promise<Message>;
+  sendMessage: (recipient: string, content: string, scheduledFor?: Date, recipientName?: string, isGroup?: boolean, mediaOptions?: {
+    hasMedia: boolean;
+    mediaType: string;
+    mediaPath: string;
+    mediaName: string;
+    mediaCaption?: string;
+  }) => Promise<Message>;
   deleteMessage: (id: number) => Promise<boolean>;
 }
 
@@ -264,15 +275,29 @@ export const WhatsAppProvider: React.FC<WhatsAppProviderProps> = ({ children }) 
     content: string, 
     scheduledFor?: Date, 
     recipientName?: string,
-    isGroup?: boolean
+    isGroup?: boolean,
+    mediaOptions?: {
+      hasMedia: boolean;
+      mediaType: string;
+      mediaPath: string;
+      mediaName: string;
+      mediaCaption?: string;
+    }
   ): Promise<Message> => {
     try {
-      const response = await apiRequest('POST', '/api/messages', {
+      const response = await apiRequest<Message>('POST', '/api/messages', {
         recipient,
         content,
         scheduledFor,
         recipientName,
-        isGroup
+        isGroup,
+        ...(mediaOptions ? {
+          hasMedia: mediaOptions.hasMedia,
+          mediaType: mediaOptions.mediaType,
+          mediaPath: mediaOptions.mediaPath,
+          mediaName: mediaOptions.mediaName,
+          mediaCaption: mediaOptions.mediaCaption
+        } : {})
       });
       
       // Refresh messages after sending
