@@ -5,7 +5,7 @@ import WhatsAppWebJS from "whatsapp-web.js";
 const { MessageMedia } = WhatsAppWebJS;
 // Tipos para TypeScript
 type WhatsAppClient = any;
-import { storage } from "./storage";
+import { storage as dbStorage } from "./storage";
 import { InsertContact, InsertMessage } from "@shared/schema";
 import { WebSocketServer } from "ws";
 import { Server } from "http";
@@ -127,10 +127,10 @@ class WhatsAppService implements WhatsAppManager {
           
           // Buscar mensagens no nosso banco para atualizar pelo ID do WhatsApp
           // Este é um método simplificado, pode precisar ser adaptado
-          const messages = await storage.getMessages();
+          const messages = await dbStorage.getMessages();
           for (const dbMessage of messages) {
             if (dbMessage.status === 'sent' || dbMessage.status === 'delivered') {
-              await storage.updateMessage(dbMessage.id, { status });
+              await dbStorage.updateMessage(dbMessage.id, { status });
             }
           }
           
@@ -307,7 +307,7 @@ class WhatsAppService implements WhatsAppManager {
       // Process contacts
       for (const contact of contacts) {
         if (contact.isMyContact && contact.name) {
-          const existingContact = await storage.getContactByPhone(contact.id._serialized);
+          const existingContact = await dbStorage.getContactByPhone(contact.id._serialized);
           
           if (!existingContact) {
             const newContact: InsertContact = {
@@ -316,7 +316,7 @@ class WhatsAppService implements WhatsAppManager {
               isGroup: false,
               memberCount: null
             };
-            await storage.createContact(newContact);
+            await dbStorage.createContact(newContact);
           }
         }
       }
@@ -324,7 +324,7 @@ class WhatsAppService implements WhatsAppManager {
       // Process groups
       for (const chat of chats) {
         if (chat.isGroup) {
-          const existingGroup = await storage.getContactByPhone(chat.id._serialized);
+          const existingGroup = await dbStorage.getContactByPhone(chat.id._serialized);
           
           if (!existingGroup) {
             const participants = await chat.participants || [];
@@ -334,7 +334,7 @@ class WhatsAppService implements WhatsAppManager {
               isGroup: true,
               memberCount: participants.length
             };
-            await storage.createContact(newGroup);
+            await dbStorage.createContact(newGroup);
           }
         }
       }
@@ -414,13 +414,13 @@ class WhatsAppService implements WhatsAppManager {
       try {
         if (!this.isConnected) return;
         
-        const pendingMessages = await storage.getPendingMessages();
+        const pendingMessages = await dbStorage.getPendingMessages();
         log(`Processing ${pendingMessages.length} pending messages`, 'whatsapp');
         
         for (const message of pendingMessages) {
           try {
             // Update message status to sending
-            await storage.updateMessage(message.id, { status: 'sending' });
+            await dbStorage.updateMessage(message.id, { status: 'sending' });
             
             // Send the message
             const messageId = await this.sendMessage(
@@ -433,7 +433,7 @@ class WhatsAppService implements WhatsAppManager {
             );
             
             // Update message as sent
-            await storage.updateMessage(message.id, {
+            await dbStorage.updateMessage(message.id, {
               status: 'sent',
               sentAt: new Date()
             });
@@ -451,7 +451,7 @@ class WhatsAppService implements WhatsAppManager {
             log(`Error sending scheduled message ${message.id}: ${error}`, 'whatsapp');
             
             // Update message as failed
-            await storage.updateMessage(message.id, {
+            await dbStorage.updateMessage(message.id, {
               status: 'failed',
               errorMessage: (error as Error).message
             });
