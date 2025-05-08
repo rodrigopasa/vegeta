@@ -59,6 +59,16 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
   const [showRecipientPreview, setShowRecipientPreview] = useState<boolean>(false);
   const [isBulkSending, setIsBulkSending] = useState<boolean>(false);
   const [bulkProgress, setBulkProgress] = useState<number>(0);
+  
+  // Media attachment
+  const [hasMedia, setHasMedia] = useState<boolean>(false);
+  const [mediaFile, setMediaFile] = useState<File | null>(null);
+  const [mediaType, setMediaType] = useState<string>('');
+  const [mediaPath, setMediaPath] = useState<string>('');
+  const [mediaName, setMediaName] = useState<string>('');
+  const [mediaCaption, setMediaCaption] = useState<string>('');
+  const [isUploading, setIsUploading] = useState<boolean>(false);
+  const mediaInputRef = useRef<HTMLInputElement>(null);
 
   // Reset form when closing
   useEffect(() => {
@@ -88,6 +98,15 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
     setShowRecipientPreview(false);
     setIsBulkSending(false);
     setBulkProgress(0);
+    
+    // Media attachment
+    setHasMedia(false);
+    setMediaFile(null);
+    setMediaType('');
+    setMediaPath('');
+    setMediaName('');
+    setMediaCaption('');
+    setIsUploading(false);
     
     // Common fields
     setMessage('');
@@ -235,6 +254,67 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
     }
   };
   
+  // Handle media file selection
+  const handleMediaFileSelect = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      setHasMedia(false);
+      return;
+    }
+    
+    setMediaFile(file);
+    setMediaName(file.name);
+    setMediaType(file.type);
+    setHasMedia(true);
+    
+    try {
+      setIsUploading(true);
+      
+      // Create a FormData object to send the file
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      // Upload the file to the server
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to upload file');
+      }
+      
+      const data = await response.json();
+      setMediaPath(data.path);
+      
+      toast({
+        title: "Arquivo anexado",
+        description: `${file.name} foi anexado com sucesso.`,
+      });
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      toast({
+        title: "Erro ao anexar arquivo",
+        description: "Não foi possível anexar o arquivo. Tente novamente.",
+        variant: "destructive"
+      });
+      
+      // Reset media state
+      setHasMedia(false);
+      setMediaFile(null);
+      setMediaName('');
+      setMediaType('');
+      setMediaPath('');
+    } finally {
+      setIsUploading(false);
+      
+      // Reset the file input to allow selecting the same file again
+      if (mediaInputRef.current) {
+        mediaInputRef.current.value = '';
+      }
+    }
+  };
+  
   // Enviar mensagem para contato salvo
   const handleSendToSavedContact = async (immediate: boolean = true) => {
     if (!selectedRecipient || !message.trim()) return;
@@ -244,12 +324,21 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
       
       const scheduledFor = immediate ? undefined : getScheduledDateTime();
       
+      const mediaOptions = hasMedia && mediaPath ? {
+        hasMedia,
+        mediaType,
+        mediaPath,
+        mediaName,
+        mediaCaption
+      } : undefined;
+      
       await sendMessage(
         selectedRecipient, 
         message, 
         scheduledFor,
         selectedRecipientName, 
-        isGroup
+        isGroup,
+        mediaOptions
       );
       
       // Close panel on success
@@ -285,12 +374,21 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
       
       const scheduledFor = immediate ? undefined : getScheduledDateTime();
       
+      const mediaOptions = hasMedia && mediaPath ? {
+        hasMedia,
+        mediaType,
+        mediaPath,
+        mediaName,
+        mediaCaption
+      } : undefined;
+      
       await sendMessage(
         formattedPhone,
         message,
         scheduledFor,
         newRecipientName || formattedPhone,
-        false
+        false,
+        mediaOptions
       );
       
       // Close panel on success
@@ -318,6 +416,14 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
       const scheduledFor = immediate ? undefined : getScheduledDateTime();
       const failed: string[] = [];
       
+      const mediaOptions = hasMedia && mediaPath ? {
+        hasMedia,
+        mediaType,
+        mediaPath,
+        mediaName,
+        mediaCaption
+      } : undefined;
+      
       // Estamos enviando de forma sequencial para evitar bloqueio do WhatsApp
       for (let i = 0; i < csvRecipients.length; i++) {
         const recipient = csvRecipients[i];
@@ -329,7 +435,8 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
             message,
             scheduledFor,
             recipient.name || recipient.phoneNumber,
-            false
+            false,
+            mediaOptions
           );
           
           // Pequeno atraso entre mensagens para evitar bloqueio
@@ -662,6 +769,81 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
           onChange={setMessage}
           placeholder="Digite sua mensagem aqui..."
         />
+      </div>
+      
+      {/* Media attachment */}
+      <div className="p-4 border-b border-gray-200">
+        <div className="flex justify-between items-center mb-2">
+          <label className="block text-sm font-medium text-[hsl(var(--whatsapp-secondary))]">
+            Anexar arquivo
+          </label>
+          {hasMedia && (
+            <button 
+              className="text-xs text-red-500 hover:text-red-700"
+              onClick={() => {
+                setHasMedia(false);
+                setMediaFile(null);
+                setMediaType('');
+                setMediaPath('');
+                setMediaName('');
+                setMediaCaption('');
+              }}
+            >
+              Remover
+            </button>
+          )}
+        </div>
+        
+        {hasMedia && mediaFile ? (
+          <div className="border rounded-md p-3 mb-3">
+            <div className="flex items-center">
+              <FileText className="h-5 w-5 text-gray-500 mr-2" />
+              <div className="overflow-hidden">
+                <p className="font-medium text-sm truncate">{mediaName}</p>
+                <p className="text-xs text-gray-500">{(mediaFile.size / 1024).toFixed(1)} KB</p>
+              </div>
+              {isUploading && (
+                <Spinner className="ml-auto h-4 w-4" />
+              )}
+            </div>
+            {mediaPath && (
+              <div className="mt-2">
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Legenda (opcional)
+                </label>
+                <Input 
+                  type="text"
+                  placeholder="Digite uma legenda para o arquivo..."
+                  value={mediaCaption || ''}
+                  onChange={(e) => setMediaCaption(e.target.value)}
+                  className="text-sm"
+                />
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="border-2 border-dashed rounded-md p-3 text-center">
+            <input 
+              type="file"
+              ref={mediaInputRef}
+              className="hidden"
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.jpg,.jpeg,.png"
+              onChange={handleMediaFileSelect}
+            />
+            <Button
+              variant="outline"
+              onClick={() => mediaInputRef.current?.click()}
+              className="w-full"
+              disabled={isUploading}
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Selecionar arquivo
+            </Button>
+            <p className="text-xs text-gray-500 mt-2">
+              Tipos permitidos: PDF, Word, Excel, imagens
+            </p>
+          </div>
+        )}
       </div>
       
       {/* Scheduling options */}
