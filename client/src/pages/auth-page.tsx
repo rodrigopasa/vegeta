@@ -71,10 +71,22 @@ export default function AuthPage() {
 
   const onSubmit = (data: AuthFormData) => {
     if (isLogin) {
+      console.log("AuthPage: tentando fazer login com", data.username);
       if (loginMutation) {
         loginMutation.mutate({
           username: data.username,
           password: data.password
+        }, {
+          onSuccess: (userData) => {
+            console.log("AuthPage: login bem-sucedido, redirecionando...", userData);
+            // Forçar redirecionamento após o login bem-sucedido
+            setTimeout(() => {
+              window.location.href = "/";
+            }, 1000);
+          },
+          onError: (error) => {
+            console.error("AuthPage: erro no login", error);
+          }
         });
       } else {
         toast({
@@ -84,8 +96,20 @@ export default function AuthPage() {
         });
       }
     } else {
+      console.log("AuthPage: tentando registrar usuário", data.username);
       if (registerMutation) {
-        registerMutation.mutate(data);
+        registerMutation.mutate(data, {
+          onSuccess: (userData) => {
+            console.log("AuthPage: registro bem-sucedido, redirecionando...", userData);
+            // Forçar redirecionamento após o registro bem-sucedido
+            setTimeout(() => {
+              window.location.href = "/";
+            }, 1000);
+          },
+          onError: (error) => {
+            console.error("AuthPage: erro no registro", error);
+          }
+        });
       } else {
         toast({
           title: "Erro no registro",
