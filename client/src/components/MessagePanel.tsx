@@ -498,8 +498,8 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="w-96 bg-white border-l border-gray-200 flex flex-col flex-shrink-0 overflow-y-auto">
-      <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+    <div className="w-96 bg-white border-l border-gray-200 flex flex-col h-screen overflow-hidden">
+      <div className="p-4 border-b border-gray-200 flex justify-between items-center flex-shrink-0">
         <h3 className="font-medium">Nova mensagem</h3>
         <button 
           className="text-gray-500 hover:text-gray-700"
@@ -508,9 +508,10 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
           <X size={18} />
         </button>
       </div>
+      <div className="flex-1 overflow-y-auto flex flex-col">
       
       {/* Recipient selection tabs */}
-      <div className="p-4 border-b border-gray-200">
+      <div className="p-4 border-b border-gray-200 overflow-y-auto">
         <Tabs defaultValue="saved" value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid grid-cols-3 mb-4">
             <TabsTrigger value="saved" className="text-xs">
@@ -535,10 +536,10 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
                   Tipo de destinatário
                 </label>
                 <Select value={recipientType} onValueChange={handleRecipientTypeChange}>
-                  <SelectTrigger>
+                  <SelectTrigger className="w-full">
                     <SelectValue placeholder="Selecione o tipo..." />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent position="item-aligned">
                     <SelectItem value="contact">Contato</SelectItem>
                     <SelectItem value="group">Grupo</SelectItem>
                   </SelectContent>
@@ -575,10 +576,10 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
                   ) : (
                     /* Recipient selection dropdown */
                     <Select onValueChange={handleRecipientChange}>
-                      <SelectTrigger>
+                      <SelectTrigger className="w-full">
                         <SelectValue placeholder={`Selecione ${recipientType === 'group' ? 'um grupo' : 'um contato'}...`} />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent position="item-aligned">
                         {recipientType === 'contact' && contacts.map(contact => (
                           <SelectItem 
                             key={contact.id} 
@@ -764,7 +765,7 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
       </div>
       
       {/* Message composer */}
-      <div className="p-4 border-b border-gray-200 flex-1 overflow-auto">
+      <div className="p-4 border-b border-gray-200 flex-shrink-0">
         <label className="block text-sm font-medium text-[hsl(var(--whatsapp-secondary))] mb-2">
           Mensagem
         </label>
@@ -776,7 +777,7 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
       </div>
       
       {/* Media attachment */}
-      <div className="p-4 border-b border-gray-200">
+      <div className="p-4 border-b border-gray-200 flex-shrink-0">
         <div className="flex justify-between items-center mb-2">
           <label className="block text-sm font-medium text-[hsl(var(--whatsapp-secondary))]">
             Anexar arquivo
