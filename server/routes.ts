@@ -9,14 +9,11 @@ import passport from "passport";
 import { setupAuth, hashPassword } from "./auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Configurar autenticação
-  setupAuth(app);
+  // Definir as rotas públicas antes de configurar autenticação
   
   // Rota para verificar a contagem de usuários (pública, sem autenticação)
-  // Deve estar ANTES dos middlewares de proteção
   app.get("/api/users/count", async (req: Request, res: Response) => {
     try {
-      // Não precisamos verificar autenticação para essa rota
       const count = await storage.getUserCount();
       // Log para debug
       console.log("User count:", count);
@@ -27,25 +24,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Definir as rotas públicas da API
-  const publicApiRoutes = [
-    '/api/login', 
-    '/api/register', 
-    '/api/user'
-  ];
-  
-  // Os endpoints da API devem ser protegidos mas retornar 401 em vez de redirecionar
-  app.use('/api', (req: Request, res: Response, next: NextFunction) => {
-    // Verifica se é uma rota pública ou se está autenticado
-    if (publicApiRoutes.includes(req.path) || req.path === '/api/users/count' || req.isAuthenticated()) {
-      return next();
-    }
-    
-    // Retorna 401 para APIs não autenticadas
-    res.status(401).json({ error: 'Unauthorized' });
-  });
-
-  // Rota para registrar um novo usuário (apenas se não houver usuários existentes)
+  // Rota para registrar um novo usuário (pública, apenas se não houver usuários existentes)
   app.post("/api/register", async (req: Request, res: Response) => {
     try {
       // Verificar se já existe algum usuário
@@ -83,6 +62,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Configurar autenticação
+  setupAuth(app);
+  
+  // Definir as rotas públicas da API
+  const publicApiRoutes = [
+    '/api/login', 
+    '/api/register', 
+    '/api/users/count',
+    '/api/user'
+  ];
+  
+  // Os endpoints da API devem ser protegidos mas retornar 401 em vez de redirecionar
+  app.use('/api', (req: Request, res: Response, next: NextFunction) => {
+    // Verifica se é uma rota pública ou se está autenticado
+    if (publicApiRoutes.includes(req.path) || req.isAuthenticated()) {
+      return next();
+    }
+    
+    // Retorna 401 para APIs não autenticadas
+    res.status(401).json({ error: 'Unauthorized' });
+  });
+  
   // Rota direta para a página de login estática
   app.get("/static-login.html", (req: Request, res: Response) => {
     res.sendFile("static-login.html", { root: "./client" });
