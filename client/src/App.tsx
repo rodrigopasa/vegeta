@@ -42,7 +42,8 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
 }
 
 function Router() {
-  const { user } = useAuth();
+  const auth = useAuth();
+  const user = auth?.user;
 
   return (
     <Switch>

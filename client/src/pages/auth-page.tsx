@@ -22,7 +22,10 @@ type AuthFormData = z.infer<typeof authSchema>;
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
   const [isFirstUser, setIsFirstUser] = useState(false);
-  const { user, loginMutation, registerMutation } = useAuth();
+  const auth = useAuth();
+  const user = auth?.user;
+  const loginMutation = auth?.loginMutation;
+  const registerMutation = auth?.registerMutation;
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
@@ -64,16 +67,32 @@ export default function AuthPage() {
 
   const onSubmit = (data: AuthFormData) => {
     if (isLogin) {
-      loginMutation.mutate({
-        username: data.username,
-        password: data.password
-      });
+      if (loginMutation) {
+        loginMutation.mutate({
+          username: data.username,
+          password: data.password
+        });
+      } else {
+        toast({
+          title: "Erro no login",
+          description: "Não foi possível iniciar o processo de login",
+          variant: "destructive"
+        });
+      }
     } else {
-      registerMutation.mutate(data);
+      if (registerMutation) {
+        registerMutation.mutate(data);
+      } else {
+        toast({
+          title: "Erro no registro",
+          description: "Não foi possível iniciar o processo de registro",
+          variant: "destructive"
+        });
+      }
     }
   };
 
-  const isPending = loginMutation.isPending || registerMutation.isPending;
+  const isPending = loginMutation?.isPending || registerMutation?.isPending || false;
 
   // Se já estiver logado, não mostrar a página de autenticação
   if (user) return null;

@@ -8,7 +8,9 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ path, component: Component }: ProtectedRouteProps) {
-  const { user, isLoading } = useAuth();
+  const auth = useAuth();
+  const user = auth?.user;
+  const isLoading = auth?.isLoading || false;
 
   return (
     <Route path={path}>
