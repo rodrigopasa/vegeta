@@ -12,18 +12,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Configurar autenticação
   setupAuth(app);
   
+  // Definir as rotas públicas da API
+  const publicApiRoutes = [
+    '/api/login', 
+    '/api/register', 
+    '/api/users/count', 
+    '/api/user'
+  ];
+  
   // Os endpoints da API devem ser protegidos mas retornar 401 em vez de redirecionar
   app.use('/api', (req: Request, res: Response, next: NextFunction) => {
-    // Lista de rotas públicas que não precisam de autenticação
-    const publicRoutes = [
-      '/api/login', 
-      '/api/register', 
-      '/api/users/count', 
-      '/api/user'
-    ];
-    
     // Verifica se é uma rota pública ou se está autenticado
-    if (publicRoutes.includes(req.path) || req.isAuthenticated()) {
+    if (publicApiRoutes.includes(req.path) || req.isAuthenticated()) {
       return next();
     }
     
