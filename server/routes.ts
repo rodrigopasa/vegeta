@@ -167,7 +167,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           const messageId = await whatsAppService.sendMessage(
             messageData.recipient,
-            messageData.content
+            messageData.content,
+            messageData.recipientName
           );
           
           // Update message status to sent

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Search, Calendar, Users, User, Edit, Trash2, AlertCircle } from 'lucide-react';
-import { formatDate, formatDateLong, getStatusColor, getFormattedStatus, getMessagePreview } from '@/lib/utils';
+import { formatDate, formatDateLong, getStatusColor, getFormattedStatus, getMessagePreview, processVariables } from '@/lib/utils';
 import MessagePanel from '@/components/MessagePanel';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -118,8 +118,16 @@ const ScheduledMessages: React.FC = () => {
                           Agendada para: {formatDateLong(message.scheduledFor)}
                         </span>
                       </div>
-                      <div className="mt-3 text-sm">
-                        {message.content}
+                      <div className="mt-3 space-y-2">
+                        <div className="text-sm">
+                          {message.content}
+                        </div>
+                        {message.content.includes('{{') && (
+                          <div className="mt-1 text-xs bg-gray-50 p-2 rounded border border-gray-200">
+                            <p className="text-gray-500 font-medium mb-1">Prévia com variáveis:</p>
+                            <p className="text-gray-700">{processVariables(message.content, message.recipientName)}</p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

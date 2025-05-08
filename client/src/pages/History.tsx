@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, Calendar, CalendarRange, User, Users, AlertTriangle } from 'lucide-react';
-import { formatDate, formatDateLong, getStatusColor, getFormattedStatus } from '@/lib/utils';
+import { formatDate, formatDateLong, getStatusColor, getFormattedStatus, processVariables, getMessagePreview } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 
 const History: React.FC = () => {
@@ -113,6 +113,15 @@ const History: React.FC = () => {
                       <div className="text-sm text-gray-900 max-w-md truncate">
                         {message.content}
                       </div>
+                      
+                      {message.content.includes('{{') && (
+                        <div className="flex items-center mt-1">
+                          <span className="text-xs text-green-600 bg-green-50 px-1 py-0.5 rounded">
+                            Com variáveis: {getMessagePreview(message.content, 30, message.recipientName)}
+                          </span>
+                        </div>
+                      )}
+                      
                       {message.errorMessage && (
                         <div className="flex items-center mt-1 text-xs text-red-500">
                           <AlertTriangle className="h-3 w-3 mr-1" />

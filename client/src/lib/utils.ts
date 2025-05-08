@@ -76,9 +76,42 @@ export function getFormattedStatus(status: string): string {
   }
 }
 
-export function getMessagePreview(content: string, maxLength: number = 50): string {
-  if (content.length <= maxLength) return content;
-  return content.substring(0, maxLength) + '...';
+// Função para pré-visualizar as variáveis do conteúdo
+export function processVariables(content: string, recipientName?: string | null): string {
+  if (!content) return '';
+  
+  const now = new Date();
+  
+  // Formatar data (Brasil/SP)
+  const dateFormatter = new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit', 
+    month: '2-digit',
+    year: 'numeric',
+    timeZone: 'America/Sao_Paulo'
+  });
+  
+  // Formatar hora (Brasil/SP)
+  const timeFormatter = new Intl.DateTimeFormat('pt-BR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'America/Sao_Paulo'
+  });
+  
+  // Processar as variáveis
+  return content
+    .replace(/\{\{nome\}\}/g, recipientName || 'Cliente')
+    .replace(/\{\{data\}\}/g, dateFormatter.format(now))
+    .replace(/\{\{hora\}\}/g, timeFormatter.format(now));
+}
+
+// Formatação do texto de prévia com variáveis processadas
+export function getMessagePreview(content: string, maxLength: number = 50, recipientName?: string | null): string {
+  // Processar as variáveis
+  const processedContent = processVariables(content, recipientName);
+  
+  // Truncar se necessário
+  if (processedContent.length <= maxLength) return processedContent;
+  return processedContent.substring(0, maxLength) + '...';
 }
 
 export function truncateText(text: string, maxLength: number = 20): string {
