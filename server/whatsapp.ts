@@ -323,7 +323,7 @@ class WhatsAppService implements WhatsAppManager {
       isGroup?: boolean | null
     },
     errorMessage?: string
-  ) {
+  ): Promise<void> {
     return this._sendStatusNotification(success, messageInfo, errorMessage);
   }
 
