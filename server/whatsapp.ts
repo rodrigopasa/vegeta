@@ -6,7 +6,7 @@ const { MessageMedia } = WhatsAppWebJS;
 // Tipos para TypeScript
 type WhatsAppClient = any;
 import { storage as dbStorage } from "./storage";
-import { InsertContact, InsertMessage } from "@shared/schema";
+import { InsertContact, InsertMessage, WhatsappInstance } from "@shared/schema";
 import { WebSocketServer } from "ws";
 import { Server } from "http";
 import { log } from "./vite";
@@ -15,28 +15,63 @@ import fs from 'fs';
 import path from 'path';
 import mime from 'mime-types';
 
-interface WhatsAppManager {
+interface WhatsAppInstanceData {
+  id: number;
   client: WhatsAppClient | null;
   isInitialized: boolean;
   isConnected: boolean;
   qrCode: string | null;
-  initializeClient(): Promise<void>;
-  getQRCode(): string | null;
-  sendMessage(to: string, content: string, recipientName?: string | null, mediaPath?: string | null, mediaType?: string | null, mediaCaption?: string | null): Promise<string>;
-  refreshContacts(): Promise<void>;
+  phoneNumber: string;
+  name: string;
+}
+
+interface WhatsAppManager {
+  initializeClient(instanceId: number): Promise<void>;
+  getQRCode(instanceId: number): string | null;
+  sendMessage(instanceId: number, to: string, content: string, recipientName?: string | null, mediaPath?: string | null, mediaType?: string | null, mediaCaption?: string | null): Promise<string>;
+  refreshContacts(instanceId: number): Promise<void>;
+  getInstances(): Promise<WhatsappInstance[]>;
+  getInstance(instanceId: number): Promise<WhatsAppInstanceData | null>;
+  createInstance(name: string, phoneNumber: string, description?: string): Promise<WhatsappInstance>;
 }
 
 class WhatsAppService implements WhatsAppManager {
-  client: WhatsAppClient | null = null;
-  isInitialized: boolean = false;
-  isConnected: boolean = false;
-  qrCode: string | null = null;
+  private instances: Map<number, WhatsAppInstanceData> = new Map();
   wss: WebSocketServer | null = null;
   messageScheduler: NodeJS.Timeout | null = null;
 
   constructor() {
-    this.initializeClient();
+    this.loadInstances();
     this.startMessageScheduler();
+  }
+  
+  private async loadInstances(): Promise<void> {
+    try {
+      // Carregar todas as instâncias do banco de dados
+      const instances = await dbStorage.getWhatsappInstances();
+      
+      // Inicializar cada instância
+      for (const instance of instances) {
+        if (instance.isActive) {
+          this.instances.set(instance.id, {
+            id: instance.id,
+            client: null,
+            isInitialized: false,
+            isConnected: false,
+            qrCode: null,
+            phoneNumber: instance.phoneNumber,
+            name: instance.name
+          });
+          
+          // Inicializar cliente para esta instância
+          await this.initializeClient(instance.id);
+        }
+      }
+      
+      log(`Loaded ${this.instances.size} WhatsApp instances`, 'whatsapp');
+    } catch (error) {
+      log(`Error loading WhatsApp instances: ${error}`, 'whatsapp');
+    }
   }
 
   setupWebSockets(server: Server) {
@@ -46,16 +81,15 @@ class WhatsAppService implements WhatsAppManager {
     this.wss.on('connection', (ws) => {
       log('WebSocket client connected', 'whatsapp');
       
-      // Send initial state
+      // Send initial state for all instances
       if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({
-          type: 'CONNECTION_STATE',
-          payload: {
-            isConnected: this.isConnected,
-            isInitialized: this.isInitialized,
-            qrCode: this.qrCode
-          }
-        }));
+        // Enviar lista de instâncias disponíveis
+        this.getInstancesStatus().then(instancesStatus => {
+          ws.send(JSON.stringify({
+            type: 'INSTANCES_STATUS',
+            payload: instancesStatus
+          }));
+        });
       }
     });
   }
@@ -68,6 +102,24 @@ class WhatsAppService implements WhatsAppManager {
         client.send(JSON.stringify(data));
       }
     });
+  }
+  
+  // Método para obter status de todas as instâncias
+  private async getInstancesStatus(): Promise<any[]> {
+    const status = [];
+    
+    for (const [id, instance] of this.instances.entries()) {
+      status.push({
+        id,
+        name: instance.name,
+        phoneNumber: instance.phoneNumber,
+        isConnected: instance.isConnected,
+        isInitialized: instance.isInitialized,
+        qrCode: instance.qrCode
+      });
+    }
+    
+    return status;
   }
 
   async initializeClient(): Promise<void> {

@@ -2,6 +2,7 @@ import {
   users, type User, type InsertUser,
   contacts, type Contact, type InsertContact,
   messages, type Message, type InsertMessage,
+  whatsappInstances, type WhatsappInstance, type InsertWhatsappInstance
 } from "@shared/schema";
 
 // Storage interface with CRUD methods
@@ -40,17 +41,21 @@ export interface IStorage {
 
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
+  private instancesMap: Map<number, WhatsappInstance>;
   private contactsMap: Map<number, Contact>;
   private messagesMap: Map<number, Message>;
   private userCurrentId: number;
+  private instanceCurrentId: number;
   private contactCurrentId: number;
   private messageCurrentId: number;
 
   constructor() {
     this.users = new Map();
+    this.instancesMap = new Map();
     this.contactsMap = new Map();
     this.messagesMap = new Map();
     this.userCurrentId = 1;
+    this.instanceCurrentId = 1;
     this.contactCurrentId = 1;
     this.messageCurrentId = 1;
   }
@@ -76,9 +81,55 @@ export class MemStorage implements IStorage {
   async getUserCount(): Promise<number> {
     return this.users.size;
   }
+  
+  // WhatsApp Instance methods
+  async getWhatsappInstances(): Promise<WhatsappInstance[]> {
+    return Array.from(this.instancesMap.values());
+  }
+  
+  async getWhatsappInstance(id: number): Promise<WhatsappInstance | undefined> {
+    return this.instancesMap.get(id);
+  }
+  
+  async getWhatsappInstanceByPhone(phoneNumber: string): Promise<WhatsappInstance | undefined> {
+    return Array.from(this.instancesMap.values()).find(
+      (instance) => instance.phoneNumber === phoneNumber,
+    );
+  }
+  
+  async createWhatsappInstance(instance: InsertWhatsappInstance): Promise<WhatsappInstance> {
+    const id = this.instanceCurrentId++;
+    const now = new Date();
+    const newInstance: WhatsappInstance = { 
+      ...instance, 
+      id,
+      createdAt: now,
+      lastConnectedAt: null 
+    };
+    this.instancesMap.set(id, newInstance);
+    return newInstance;
+  }
+  
+  async updateWhatsappInstance(id: number, instanceData: Partial<InsertWhatsappInstance>): Promise<WhatsappInstance | undefined> {
+    const existingInstance = this.instancesMap.get(id);
+    if (!existingInstance) return undefined;
+    
+    const updatedInstance = { ...existingInstance, ...instanceData };
+    this.instancesMap.set(id, updatedInstance);
+    return updatedInstance;
+  }
+  
+  async deleteWhatsappInstance(id: number): Promise<boolean> {
+    return this.instancesMap.delete(id);
+  }
 
-  // Contact methods
-  async getContacts(): Promise<Contact[]> {
+  // Contact methods - updated for multiple instances
+  async getContacts(instanceId?: number): Promise<Contact[]> {
+    if (instanceId) {
+      return Array.from(this.contactsMap.values()).filter(
+        contact => contact.instanceId === instanceId
+      );
+    }
     return Array.from(this.contactsMap.values());
   }
 
@@ -86,15 +137,20 @@ export class MemStorage implements IStorage {
     return this.contactsMap.get(id);
   }
 
-  async getContactByPhone(phoneNumber: string): Promise<Contact | undefined> {
+  async getContactByPhone(phoneNumber: string, instanceId: number): Promise<Contact | undefined> {
     return Array.from(this.contactsMap.values()).find(
-      (contact) => contact.phoneNumber === phoneNumber,
+      (contact) => contact.phoneNumber === phoneNumber && contact.instanceId === instanceId
     );
   }
 
   async createContact(insertContact: InsertContact): Promise<Contact> {
     const id = this.contactCurrentId++;
-    const contact: Contact = { ...insertContact, id };
+    const contact: Contact = { 
+      ...insertContact, 
+      id,
+      isGroup: insertContact.isGroup ?? false,
+      memberCount: insertContact.memberCount ?? null
+    };
     this.contactsMap.set(id, contact);
     return contact;
   }
@@ -112,8 +168,13 @@ export class MemStorage implements IStorage {
     return this.contactsMap.delete(id);
   }
 
-  // Message methods
-  async getMessages(): Promise<Message[]> {
+  // Message methods - updated for multiple instances
+  async getMessages(instanceId?: number): Promise<Message[]> {
+    if (instanceId) {
+      return Array.from(this.messagesMap.values()).filter(
+        message => message.instanceId === instanceId
+      );
+    }
     return Array.from(this.messagesMap.values());
   }
 
@@ -121,19 +182,31 @@ export class MemStorage implements IStorage {
     return this.messagesMap.get(id);
   }
 
-  async getScheduledMessages(): Promise<Message[]> {
-    return Array.from(this.messagesMap.values())
+  async getScheduledMessages(instanceId?: number): Promise<Message[]> {
+    let messages = Array.from(this.messagesMap.values())
       .filter(message => message.status === "scheduled");
+      
+    if (instanceId) {
+      messages = messages.filter(message => message.instanceId === instanceId);
+    }
+    
+    return messages;
   }
 
-  async getPendingMessages(): Promise<Message[]> {
+  async getPendingMessages(instanceId?: number): Promise<Message[]> {
     const now = new Date();
-    return Array.from(this.messagesMap.values())
+    let messages = Array.from(this.messagesMap.values())
       .filter(message => 
         message.status === "scheduled" && 
         message.scheduledFor && 
         message.scheduledFor <= now
       );
+      
+    if (instanceId) {
+      messages = messages.filter(message => message.instanceId === instanceId);
+    }
+    
+    return messages;
   }
 
   async createMessage(insertMessage: InsertMessage): Promise<Message> {
@@ -143,6 +216,16 @@ export class MemStorage implements IStorage {
       id,
       status: "scheduled",
       createdAt: new Date(),
+      sentAt: null,
+      errorMessage: null,
+      isGroup: insertMessage.isGroup ?? false,
+      recipientName: insertMessage.recipientName ?? null,
+      scheduledFor: insertMessage.scheduledFor ?? null,
+      hasMedia: insertMessage.hasMedia ?? false,
+      mediaType: insertMessage.mediaType ?? null,
+      mediaPath: insertMessage.mediaPath ?? null,
+      mediaName: insertMessage.mediaName ?? null,
+      mediaCaption: insertMessage.mediaCaption ?? null
     };
     this.messagesMap.set(id, message);
     return message;
