@@ -54,7 +54,9 @@ Seja sempre educado, conciso e profissional. Não use frases muito longas.`;
       // Tente enviar para a OpenAI, mas tenha um fallback se falhar
       let openAIResponse;
       try {
+        log(`Enviando mensagem para a OpenAI: "${request.message}"`, 'chatbot-service');
         openAIResponse = await openAIService.sendMessage(this.fullPrompt, conversationHistory);
+        log(`Resposta recebida da OpenAI: "${openAIResponse.substring(0, 100)}${openAIResponse.length > 100 ? '...' : ''}"`, 'chatbot-service');
         
         // Adicionar resposta ao histórico de conversa
         conversationHistory.push({
