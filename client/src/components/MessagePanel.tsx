@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect, ChangeEvent } from 'react';
-import { X, UserCircle, Users, Phone, Clock, Upload, Table, Send, MessageCircle } from 'lucide-react';
+import { X, UserCircle, Users, Phone, Clock, Upload, Table, Send, MessageCircle, AlertCircle } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
