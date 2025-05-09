@@ -99,11 +99,18 @@ const GoogleIntegrations: React.FC = () => {
 
     setIsCalendarLoading(true);
     try {
-      const response = await apiRequest({
-        url: '/api/calendar/initialize',
+      const response = await fetch('/api/calendar/initialize', {
         method: 'POST',
-        data: { calendarId }
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ calendarId })
       });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erro ao inicializar Google Calendar');
+      }
       
       toast({
         title: "Sucesso",
@@ -138,14 +145,21 @@ const GoogleIntegrations: React.FC = () => {
 
     setIsSheetsLoading(true);
     try {
-      const response = await apiRequest({
-        url: '/api/sheets/initialize',
+      const response = await fetch('/api/sheets/initialize', {
         method: 'POST',
-        data: { 
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
           spreadsheetId,
           sheetName: sheetName.trim() || "Contatos"
-        }
+        })
       });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erro ao inicializar Google Sheets');
+      }
       
       toast({
         title: "Sucesso",
