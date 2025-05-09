@@ -110,52 +110,21 @@ const WhatsAppInstances: React.FC = () => {
     return { label: 'Desconectado', variant: 'destructive' };
   };
 
-  // Efeito para forçar o recarregamento de instâncias quando a página for montada ou quando a rota for /instances
+  // Carregamento de instâncias diretamente do contexto, sem fetch redundante
   useEffect(() => {
-    const fetchInstancesData = async () => {
-      try {
-        console.log("Carregando instâncias na página WhatsAppInstances");
-        
-        // Limpar cache antes de buscar
-        const options = { 
-          method: 'GET',
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
-          }
-        };
-        
-        // Utiliza fetch com cabeçalhos para evitar cache
-        const response = await fetch('/api/whatsapp/instances', options);
-        if (!response.ok) {
-          throw new Error('Erro ao carregar instâncias');
-        }
-        
-        // Obter dados diretamente
-        const data = await response.json();
-        console.log(`${data.length} instâncias carregadas:`, data);
-        
-        // Exibe toast de sucesso apenas se houver instâncias e não for a carga inicial
-        if (data.length > 0) {
-          toast({
-            title: 'Instâncias WhatsApp',
-            description: `${data.length} instâncias carregadas com sucesso.`,
-          });
-        }
-      } catch (error) {
-        console.error('Erro ao carregar instâncias:', error);
-        toast({
-          title: 'Erro',
-          description: 'Não foi possível carregar as instâncias. Tente novamente.',
-          variant: 'destructive',
-        });
-      }
-    };
+    // Removi o fetch de instâncias aqui para evitar múltiplas requisições,
+    // já que o contexto WhatsAppProvider já faz essa requisição automaticamente
+    // quando a aplicação inicia.
     
-    // Executa o fetch imediatamente ao montar o componente
-    fetchInstancesData();
+    console.log("Página de instâncias carregada, utilizando dados do contexto");
     
-  }, [toast]);
+    if (instances.length > 0) {
+      toast({
+        title: 'Instâncias WhatsApp',
+        description: `${instances.length} instâncias disponíveis.`,
+      });
+    }
+  }, [instances.length, toast]);
   
   // Função para definir uma instância como ativa
   const setActive = (id: number) => {
