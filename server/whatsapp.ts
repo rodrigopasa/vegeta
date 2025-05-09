@@ -121,7 +121,9 @@ class WhatsAppService implements WhatsAppManager {
   private async getInstancesStatus(): Promise<any[]> {
     const status = [];
     
-    for (const [id, instance] of this.instances.entries()) {
+    // Convertendo entries() em array para evitar problema com MapIterator
+    const entries = Array.from(this.instances.entries());
+    for (const [id, instance] of entries) {
       status.push({
         id,
         name: instance.name,
