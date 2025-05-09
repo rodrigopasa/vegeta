@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { formatPhone } from '@/lib/utils';
 import { Spinner } from './Spinner';
 import FileUploader from './FileUploader';
+import CSVImporter from './CSVImporter';
 
 interface MessagePanelProps {
   isOpen: boolean;
@@ -379,8 +380,43 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
               
               {/* Tab: Importar CSV */}
               <TabsContent value="csv">
-                <div className="p-4 border-gray-200 text-center">
-                  <p className="text-gray-500">Funcionalidade em desenvolvimento</p>
+                <div className="space-y-4 mb-4">
+                  <div className="bg-white p-3 rounded-md shadow-sm border border-gray-100">
+                    <label className="block text-sm font-medium text-[hsl(var(--whatsapp-secondary))] mb-2">
+                      Importar contatos
+                    </label>
+                    <p className="text-sm text-gray-500 mb-4">
+                      Importe contatos de um arquivo CSV para envio em massa. O arquivo deve conter colunas para nome e número de telefone.
+                    </p>
+                    
+                    <CSVImporter
+                      onComplete={(importedContacts) => {
+                        // Quando o usuário terminar de importar os contatos
+                        // Vamos manter a mensagem, mas alterar para a aba de envio em massa
+                        toast({
+                          title: "Contatos importados",
+                          description: `${importedContacts.length} contatos importados com sucesso. Agora você pode enviar mensagens em massa.`,
+                        });
+                        
+                        // Você pode implementar a lógica para enviar mensagens em massa aqui
+                        // Ou simplesmente mostrar os contatos importados
+                        console.log("Contatos importados:", importedContacts);
+                      }}
+                    />
+                  </div>
+                  
+                  <div className="bg-amber-50 p-3 rounded-md border border-amber-200">
+                    <div className="flex items-start">
+                      <AlertCircle className="h-5 w-5 text-amber-500 mr-2 mt-0.5" />
+                      <div>
+                        <h4 className="text-sm font-medium text-amber-800">Importante sobre envio em massa</h4>
+                        <p className="text-xs text-amber-700 mt-1">
+                          O envio em massa de mensagens está sujeito às políticas de uso do WhatsApp. 
+                          Use de forma responsável e sempre configure os limites de taxa de envio adequadamente para evitar bloqueios.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </TabsContent>
             </Tabs>
