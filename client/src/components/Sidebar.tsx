@@ -91,6 +91,19 @@ const Sidebar: React.FC = () => {
             <span className="ml-3 hidden md:block">Integrações Google</span>
           </button>
         </div>
+
+        {/* Link direto para acesso alternativo de Integrações Google */}
+        <div className="px-2 pb-2">
+          <a
+            href="/direct-access-google"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center w-full px-4 py-3 rounded-lg hover:bg-gray-50 text-[hsl(var(--text-light))] hover:text-[hsl(var(--text-dark))] transition-all duration-200"
+          >
+            <i className="fas fa-external-link-alt text-xl w-6"></i>
+            <span className="ml-3 hidden md:block">Acesso Direto Google</span>
+          </a>
+        </div>
         
         {/* User profile section */}
         <div className="border-t border-gray-100 p-4 bg-gray-50 rounded-br-xl">

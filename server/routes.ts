@@ -205,7 +205,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     '/api/calendar/config',
     '/api/calendar/initialize',
     '/api/sheets/config',
-    '/api/sheets/initialize'
+    '/api/sheets/initialize',
+    '/api/calendar/appointments',
+    '/api/sheets/contacts',
   ];
   
   // Os endpoints da API devem ser protegidos mas retornar 401 em vez de redirecionar

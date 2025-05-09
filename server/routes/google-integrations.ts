@@ -55,17 +55,26 @@ export async function initializeCalendar(req: Request, res: Response) {
       });
     }
     
+    console.log(`Inicializando Google Calendar com ID: ${calendarId}`);
+    
     // Define o ID do calendário e inicializa o serviço
     googleCalendarService.setCalendarId(calendarId);
     const success = await googleCalendarService.initialize();
     
     if (success) {
+      // Salvar o ID do calendário como variável de ambiente para persistência
+      process.env.GOOGLE_CALENDAR_ID = calendarId;
+      
+      console.log(`Google Calendar inicializado com sucesso: ${calendarId}`);
+      
       res.json({ 
         success: true, 
         message: 'Conexão com Google Calendar inicializada com sucesso',
         calendarId
       });
     } else {
+      console.error(`Falha ao inicializar Google Calendar com ID: ${calendarId}`);
+      
       res.status(500).json({ 
         error: 'Falha ao inicializar conexão com Google Calendar'
       });
@@ -133,6 +142,8 @@ export async function initializeSheets(req: Request, res: Response) {
       });
     }
     
+    console.log(`Inicializando Google Sheets com ID: ${spreadsheetId}, Aba: ${sheetName || 'Contatos'}`);
+    
     // Define o ID da planilha e inicializa o serviço
     googleSheetsService.setSpreadsheetId(spreadsheetId);
     
@@ -144,6 +155,11 @@ export async function initializeSheets(req: Request, res: Response) {
     const success = await googleSheetsService.initialize();
     
     if (success) {
+      // Salvar o ID da planilha como variável de ambiente para persistência
+      process.env.GOOGLE_SHEET_ID = spreadsheetId;
+      
+      console.log(`Google Sheets inicializado com sucesso: ${spreadsheetId}`);
+      
       res.json({ 
         success: true, 
         message: 'Conexão com Google Sheets inicializada com sucesso',
@@ -151,6 +167,8 @@ export async function initializeSheets(req: Request, res: Response) {
         sheetName: sheetName || 'Contatos'
       });
     } else {
+      console.error(`Falha ao inicializar Google Sheets com ID: ${spreadsheetId}`);
+      
       res.status(500).json({ 
         error: 'Falha ao inicializar conexão com Google Sheets'
       });
