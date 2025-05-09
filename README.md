@@ -81,12 +81,61 @@ npm run start
 
 ## Docker Compose
 
-O projeto inclui um arquivo docker-compose.yml para facilitar o desenvolvimento e testes:
+O projeto inclui um arquivo docker-compose.yml para facilitar o desenvolvimento, testes e execução em produção:
+
+### Configuração do ambiente
+
+1. Crie um arquivo `.env` baseado no `.env-example` fornecido:
+   ```bash
+   cp .env-example .env
+   ```
+
+2. Edite o arquivo `.env` com suas configurações:
+   ```
+   # Configuração do Banco de Dados
+   PGUSER=whatsapp_user
+   PGPASSWORD=sua_senha_segura
+   PGDATABASE=whatsapp_db
+   PGHOST=postgres
+   PGPORT=5432
+
+   # URL do banco de dados para aplicação
+   DATABASE_URL=postgres://whatsapp_user:sua_senha_segura@postgres:5432/whatsapp_db
+
+   # Configuração do WhatsApp
+   # Define como true para usar cliente WhatsApp simulado em produção
+   USE_SIMULATED_CLIENT=true
+
+   # Configuração do ambiente
+   NODE_ENV=production
+   ```
+
+### Iniciando a aplicação
 
 ```bash
-# Iniciar com Docker Compose
-docker-compose up -d
+# Construir e iniciar com Docker Compose
+docker-compose up --build -d
+
+# Visualizar logs
+docker-compose logs -f
 
 # Parar os containers
 docker-compose down
+
+# Parar os containers e remover volumes (cuidado, isso apaga os dados do banco)
+docker-compose down -v
 ```
+
+### Notas sobre execução em produção
+
+1. **Cliente WhatsApp**:
+   - O sistema está configurado para usar cliente simulado por padrão em produção através da variável `USE_SIMULATED_CLIENT=true`
+   - Para usar cliente real do WhatsApp, mude essa variável para `false` no arquivo `.env`
+
+2. **Persistência de dados**:
+   - Os dados do PostgreSQL são armazenados em um volume Docker chamado `postgres-data`
+   - Para backups regulares, considere configurar um serviço de backup externo
+
+3. **Segurança**:
+   - Em ambiente de produção, considere limitar o acesso à porta 5432 do PostgreSQL 
+   - Altere as senhas padrão para senhas fortes e complexas
