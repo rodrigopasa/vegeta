@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useWhatsApp } from '@/contexts/WhatsAppContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { QRCodeSVG } from 'qrcode.react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Link } from 'wouter';
-import { PhoneIcon, PlusIcon } from 'lucide-react';
+import { PhoneIcon, PlusIcon, ChevronDownIcon } from 'lucide-react';
 
 const Header: React.FC = () => {
   const { 
@@ -15,15 +15,23 @@ const Header: React.FC = () => {
     instances, 
     activeInstanceId, 
     setActiveInstanceId,
-    initializeWhatsApp
+    initializeWhatsApp,
+    activeInstance
   } = useWhatsApp();
   
   const [showQr, setShowQr] = useState(false);
+  const [instancesLoaded, setInstancesLoaded] = useState(false);
   
-  const activeInstance = instances.find(instance => instance.id === activeInstanceId) || null;
-
+  // Verificar quando as instâncias forem carregadas
+  useEffect(() => {
+    if (instances && instances.length > 0) {
+      setInstancesLoaded(true);
+    }
+  }, [instances]);
+  
   // Handler para quando o usuário seleciona uma instância diferente
   const handleInstanceChange = (value: string) => {
+    console.log("Alterando instância para:", value);
     const id = parseInt(value, 10);
     if (!isNaN(id)) {
       setActiveInstanceId(id);
@@ -40,38 +48,42 @@ const Header: React.FC = () => {
       <div className="flex items-center space-x-4">
         {/* Instance selector dropdown */}
         {instances.length > 0 ? (
-          <div className="min-w-[200px]">
-            <Select 
-              value={activeInstanceId?.toString()} 
-              onValueChange={handleInstanceChange}
-            >
-              <SelectTrigger className="bg-white/10 text-white border-none">
-                <SelectValue placeholder="Selecione uma instância">
-                  {activeInstance ? (
-                    <div className="flex items-center">
-                      <PhoneIcon className="h-4 w-4 mr-2" />
-                      {activeInstance.name}
-                    </div>
-                  ) : (
-                    "Selecione uma instância"
-                  )}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {instances.map(instance => (
-                  <SelectItem key={instance.id} value={instance.id.toString()}>
-                    <div className="flex items-center">
-                      <PhoneIcon className="h-4 w-4 mr-2" />
-                      {instance.name} ({instance.phoneNumber})
-                    </div>
-                  </SelectItem>
-                ))}
-                <Link href="/instances" className="flex items-center p-2 m-1 text-sm rounded-md bg-primary/10 hover:bg-primary/20 cursor-pointer">
-                  <PlusIcon className="h-4 w-4 mr-2" />
-                  Gerenciar Instâncias
-                </Link>
-              </SelectContent>
-            </Select>
+          <div className="min-w-[250px]">
+            <div className="flex items-center bg-white/10 rounded-md px-3 py-2 cursor-pointer">
+              <label className="text-sm mr-2 text-white/70">Instância:</label>
+              <Select 
+                value={activeInstanceId?.toString()} 
+                onValueChange={handleInstanceChange}
+              >
+                <SelectTrigger className="bg-transparent border-none shadow-none text-white p-0 h-auto min-h-0 focus:ring-0">
+                  <SelectValue>
+                    {activeInstance ? (
+                      <div className="flex items-center">
+                        <PhoneIcon className="h-4 w-4 mr-2" />
+                        <span className="font-medium">{activeInstance.name}</span>
+                      </div>
+                    ) : (
+                      "Selecione uma instância"
+                    )}
+                  </SelectValue>
+                  <ChevronDownIcon className="h-4 w-4 ml-1 text-white/70" />
+                </SelectTrigger>
+                <SelectContent>
+                  {instances.map(instance => (
+                    <SelectItem key={instance.id} value={instance.id.toString()}>
+                      <div className="flex items-center">
+                        <PhoneIcon className="h-4 w-4 mr-2" />
+                        {instance.name} ({instance.phoneNumber})
+                      </div>
+                    </SelectItem>
+                  ))}
+                  <Link href="/instances" className="flex items-center p-2 m-1 text-sm rounded-md bg-primary/10 hover:bg-primary/20 cursor-pointer">
+                    <PlusIcon className="h-4 w-4 mr-2" />
+                    Gerenciar Instâncias
+                  </Link>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         ) : (
           <Link href="/instances">
