@@ -207,3 +207,15 @@
 [role="menu"] {
   z-index: 9999 !important;
 }
+
+/* Garantir que links e botões sejam sempre clicáveis */
+a, button, .btn, [role="button"] {
+  position: relative;
+  z-index: 10;
+  pointer-events: auto !important;
+}
+
+/* Impedir sobreposições que bloqueiem interações */
+.sidebar-overlay {
+  pointer-events: none;
+}

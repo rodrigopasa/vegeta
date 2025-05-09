@@ -43,7 +43,11 @@ const Sidebar: React.FC = () => {
           <Link 
             key={item.path}
             href={item.path}
-            className={`flex items-center px-4 py-3 rounded-lg transition-all duration-200 ${
+            onClick={(e) => {
+              console.log('Clicado no link:', item.path);
+              // O comportamento padrão do Link será executado após este log
+            }}
+            className={`flex items-center px-4 py-3 rounded-lg transition-all duration-200 relative z-20 cursor-pointer ${
               location === item.path
                 ? 'text-[hsl(var(--primary))] bg-[hsl(var(--primary))]/10 font-medium shadow-sm'
                 : 'hover:bg-gray-50 text-[hsl(var(--text-light))] hover:text-[hsl(var(--text-dark))]'
