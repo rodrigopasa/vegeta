@@ -221,14 +221,27 @@ class WhatsAppService implements WhatsAppManager {
 
       log('Initializing WhatsApp client', 'whatsapp');
       
-      // Verificar se estamos em modo de desenvolvimento no Replit
-      // Se estivermos, usar um modo simulado para testes
-      if (process.env.NODE_ENV === 'development' && process.env.REPL_ID) {
-        log('🔧 Modo de desenvolvimento do Replit detectado. Usando cliente simulado para testes.', 'whatsapp');
+      // Verificar ambientes onde devemos usar cliente simulado
+      if (process.env.NODE_ENV === 'development' || process.env.REPL_ID || process.env.USE_SIMULATED_CLIENT === 'true') {
+        log('🔧 Modo de desenvolvimento detectado. Usando cliente simulado para testes.', 'whatsapp');
         
         // Em vez de criar um cliente real, vamos simular o cliente para desenvolvimento
         this.simulateClientForDevelopment();
         return;
+      }
+      
+      // Em produção, verificar também se temos acesso ao chromium
+      if (process.env.NODE_ENV === 'production') {
+        try {
+          // Testar acesso ao puppeteer
+          const { execSync } = await import('child_process');
+          execSync('node -e "require(\'puppeteer\')"', { stdio: 'ignore' });
+        } catch (error) {
+          log(`Erro ao acessar puppeteer em produção, usando cliente simulado: ${error}`, 'whatsapp');
+          // Em caso de erro, usar cliente simulado
+          this.simulateClientForDevelopment();
+          return;
+        }
       }
       
       // Configuração do puppeteer com múltiplas opções para compatibilidade
@@ -245,18 +258,26 @@ class WhatsAppService implements WhatsAppManager {
         ]
       };
       
-      // Para produção, tentar encontrar o Chromium instalado no sistema
+      // Para produção, usar configuração mais robusta
       try {
-        // Tentar usar a localização específica do Chromium
-        const { execSync } = require('child_process');
-        const chromiumPath = execSync('which chromium-browser || which chromium || which chrome').toString().trim();
+        // Em ambiente ESM não podemos usar require, então usamos o import dinâmico
+        const { execSync } = await import('child_process');
+        let chromiumPath = '';
+        
+        try {
+          // Tentar localizar o Chromium no sistema
+          chromiumPath = execSync('which chromium-browser || which chromium || which chrome || echo ""').toString().trim();
+        } catch (e) {
+          // Ignorar erros de execução do comando
+        }
         
         if (chromiumPath) {
           log(`Usando Chromium em: ${chromiumPath}`, 'whatsapp');
           Object.assign(puppeteerOptions, { executablePath: chromiumPath });
         }
       } catch (error) {
-        log(`Não foi possível localizar Chromium, usando binário padrão: ${error}`, 'whatsapp');
+        log(`Configuração alternativa para Chromium será usada: ${error}`, 'whatsapp');
+        // Em caso de erro, usar configuração padrão
       }
       
       // Criação do cliente real

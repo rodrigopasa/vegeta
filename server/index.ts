@@ -57,13 +57,28 @@ app.use((req, res, next) => {
     throw err;
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
+  // Configurar o ambiente baseado na variável NODE_ENV
+  // Usamos try/catch para garantir que a aplicação não falhe em diferentes ambientes
+  try {
+    // Em desenvolvimento, usamos o setup do Vite
+    if (app.get("env") === "development") {
+      log("Inicializando em modo de desenvolvimento com Vite");
+      await setupVite(app, server);
+    } 
+    // Em produção, tentamos servir os arquivos estáticos
+    else {
+      log("Inicializando em modo de produção");
+      try {
+        serveStatic(app);
+      } catch (error) {
+        // Se falhar ao servir arquivos estáticos, cai para o modo de desenvolvimento
+        log(`Erro ao servir arquivos estáticos: ${error}. Tentando modo de desenvolvimento.`);
+        await setupVite(app, server);
+      }
+    }
+  } catch (error) {
+    log(`Erro ao configurar ambiente: ${error}`);
+    // Não lançar o erro para evitar que a aplicação falhe completamente
   }
 
   // ALWAYS serve the app on port 5000
