@@ -711,6 +711,26 @@ class WhatsAppService implements WhatsAppManager {
     return this._sendStatusNotification(success, messageInfo, errorMessage);
   }
 
+  // Configurações de notificação
+  private notificationSettings = {
+    adminPhoneNumber: "554197251311", // Número padrão do administrador
+    notificationsEnabled: true        // Notificações ativadas por padrão
+  };
+  
+  // Métodos para gerenciar configurações de notificação
+  getNotificationSettings() {
+    return { ...this.notificationSettings };
+  }
+  
+  setNotificationSettings(settings: {
+    adminPhoneNumber?: string;
+    notificationsEnabled?: boolean;
+  }) {
+    Object.assign(this.notificationSettings, settings);
+    log(`Configurações de notificação atualizadas: ${JSON.stringify(this.notificationSettings)}`, 'whatsapp');
+    return this.getNotificationSettings();
+  }
+  
   // Função interna para enviar notificação de status para o administrador
   private async _sendStatusNotification(
     success: boolean, 
@@ -724,7 +744,18 @@ class WhatsAppService implements WhatsAppManager {
     errorMessage?: string
   ) {
     try {
-      const adminPhone = "554197251311"; // Número do administrador para receber notificações
+      // Verificar se as notificações estão habilitadas
+      if (!this.notificationSettings.notificationsEnabled) {
+        log('Notificações desativadas, ignorando envio de notificação de status', 'whatsapp');
+        return;
+      }
+      
+      const adminPhone = this.notificationSettings.adminPhoneNumber;
+      if (!adminPhone) {
+        log('Número de administrador não configurado para notificações', 'whatsapp');
+        return;
+      }
+      
       const recipientDisplay = messageInfo.recipientName || messageInfo.recipient;
       const groupStatus = messageInfo.isGroup ? " (grupo)" : "";
       
@@ -736,11 +767,11 @@ class WhatsAppService implements WhatsAppManager {
       }
       
       // Envia a notificação para o administrador
-      log(`Sending status notification to admin: ${adminPhone}`, 'whatsapp');
+      log(`Enviando notificação de status para admin: ${adminPhone}`, 'whatsapp');
       await this.sendMessage(adminPhone, statusMessage);
-      log('Status notification sent successfully', 'whatsapp');
+      log('Notificação de status enviada com sucesso', 'whatsapp');
     } catch (error) {
-      log(`Failed to send status notification: ${error}`, 'whatsapp');
+      log(`Falha ao enviar notificação de status: ${error}`, 'whatsapp');
       // Não propagamos o erro para não interromper o fluxo principal
     }
   }
