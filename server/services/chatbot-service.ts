@@ -51,14 +51,29 @@ Seja sempre educado, conciso e profissional. Não use frases muito longas.`;
         content: request.message
       });
       
-      // Enviar para a OpenAI
-      const openAIResponse = await openAIService.sendMessage(this.fullPrompt, conversationHistory);
-      
-      // Adicionar resposta ao histórico de conversa
-      conversationHistory.push({
-        role: 'assistant',
-        content: openAIResponse
-      });
+      // Tente enviar para a OpenAI, mas tenha um fallback se falhar
+      let openAIResponse;
+      try {
+        openAIResponse = await openAIService.sendMessage(this.fullPrompt, conversationHistory);
+        
+        // Adicionar resposta ao histórico de conversa
+        conversationHistory.push({
+          role: 'assistant',
+          content: openAIResponse
+        });
+      } catch (openaiError) {
+        log(`Erro ao obter resposta da OpenAI: ${openaiError}. Usando resposta padrão.`, 'chatbot-service');
+        
+        // Resposta padrão quando a OpenAI falha
+        const defaultResponse = "Agradeço seu contato. Neste momento estou com dificuldades técnicas para processar sua solicitação de forma completa. Por favor, tente novamente mais tarde ou entre em contato diretamente com nossa equipe.";
+        
+        // Adicionar resposta padrão ao histórico
+        openAIResponse = defaultResponse;
+        conversationHistory.push({
+          role: 'assistant',
+          content: openAIResponse
+        });
+      }
       
       // Salvar histórico atualizado
       await this.updateSessionHistory(session.id, conversationHistory);
@@ -213,9 +228,13 @@ Responda em formato JSON com os seguintes campos:
 - email: string (email do cliente, se identificado)
 `;
 
-      const response = await openAIService.analyzeSentiment(prompt);
-      
-      return response;
+      try {
+        const response = await openAIService.analyzeSentiment(prompt);
+        return response;
+      } catch (error) {
+        log(`Erro ao analisar sentimento: ${error}. Retornando que não há intenção de agendamento.`, 'chatbot-service');
+        return { isAppointmentIntent: false };
+      }
     } catch (error) {
       log(`Erro ao verificar intenção de agendamento: ${error}`, 'chatbot-service');
       // Em caso de erro, retornar que não há intenção de agendamento

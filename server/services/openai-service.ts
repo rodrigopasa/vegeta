@@ -21,6 +21,12 @@ class OpenAIService {
         return false;
       }
 
+      // Verificar se a chave é válida (não vazia ou apenas espaços)
+      if (apiKey.trim() === '') {
+        log("Chave de API da OpenAI está vazia ou inválida", "openai-service");
+        return false;
+      }
+
       this.openai = new OpenAI({ apiKey });
       this.initialized = true;
 
@@ -31,6 +37,38 @@ class OpenAIService {
       return false;
     }
   }
+  
+  // Método para verificar e tentar novamente a inicialização
+  async reinitialize(): Promise<boolean> {
+    // Se já estiver inicializado, retornar verdadeiro
+    if (this.initialized && this.openai) {
+      return true;
+    }
+    
+    // Tentar inicializar novamente
+    const success = this.initialize();
+    
+    // Se falhar, tentar usar uma abordagem alternativa
+    if (!success) {
+      log("Tentando abordagem alternativa para inicializar OpenAI", "openai-service");
+      
+      try {
+        // Verificar se a chave chegou após a inicialização inicial
+        const apiKey = process.env.OPENAI_API_KEY;
+        
+        if (apiKey && apiKey.trim() !== '') {
+          this.openai = new OpenAI({ apiKey });
+          this.initialized = true;
+          log("Serviço OpenAI inicializado com sucesso (reinicialização)", "openai-service");
+          return true;
+        }
+      } catch (error) {
+        log(`Erro ao reinicializar serviço OpenAI: ${error}`, "openai-service");
+      }
+    }
+    
+    return this.initialized;
+  }
 
   /**
    * Envia uma mensagem para o modelo GPT da OpenAI
@@ -40,7 +78,7 @@ class OpenAIService {
    */
   async sendMessage(systemPrompt: string, messages: any[]): Promise<string> {
     if (!this.initialized || !this.openai) {
-      const initialized = this.initialize();
+      const initialized = await this.reinitialize();
       if (!initialized) {
         throw new Error("Serviço OpenAI não está inicializado");
       }
@@ -80,7 +118,7 @@ class OpenAIService {
    */
   async analyzeSentiment(text: string): Promise<any> {
     if (!this.initialized || !this.openai) {
-      const initialized = this.initialize();
+      const initialized = await this.reinitialize();
       if (!initialized) {
         throw new Error("Serviço OpenAI não está inicializado");
       }
@@ -126,7 +164,7 @@ class OpenAIService {
    */
   async generateImage(prompt: string): Promise<string> {
     if (!this.initialized || !this.openai) {
-      const initialized = this.initialize();
+      const initialized = await this.reinitialize();
       if (!initialized) {
         throw new Error("Serviço OpenAI não está inicializado");
       }
