@@ -184,8 +184,26 @@ Seja sempre educado, conciso e profissional. Não use frases muito longas.`;
    */
   private async updateSessionHistory(sessionId: number, conversationHistory: any[]): Promise<void> {
     try {
+      // Verificar se o histórico é um array antes de salvar
+      if (!Array.isArray(conversationHistory)) {
+        log(`Tipo inesperado de histórico de conversa: ${typeof conversationHistory}. Convertendo para array vazio.`, 'chatbot-service');
+        conversationHistory = [];
+      }
+      
+      // Garantir que todos os objetos no array são serializáveis
+      const serializableHistory = conversationHistory.map(item => {
+        // Verificar se cada item tem a estrutura esperada (role e content)
+        if (typeof item !== 'object' || !item || !item.role || !item.content) {
+          return { role: 'system', content: 'Mensagem não formatada corretamente' };
+        }
+        return {
+          role: item.role,
+          content: item.content
+        };
+      });
+      
       await storage.updateChatbotSession(sessionId, {
-        conversationHistory: JSON.stringify(conversationHistory),
+        conversationHistory: JSON.stringify(serializableHistory),
         lastActivity: new Date()
       });
     } catch (error) {
@@ -199,7 +217,15 @@ Seja sempre educado, conciso e profissional. Não use frases muito longas.`;
    */
   private parseConversationHistory(historyString: string): any[] {
     try {
+      // Se já é um objeto, não precisa parsear
+      if (typeof historyString === 'object') {
+        return Array.isArray(historyString) ? historyString : [];
+      }
+      
+      // Se é uma string vazia ou nula, retornar array vazio
       if (!historyString) return [];
+      
+      // Tentar parsear a string como JSON
       return JSON.parse(historyString);
     } catch (error) {
       log(`Erro ao parsear histórico de conversa: ${error}`, 'chatbot-service');

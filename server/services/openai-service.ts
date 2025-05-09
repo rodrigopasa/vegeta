@@ -16,6 +16,8 @@ class OpenAIService {
     try {
       const apiKey = process.env.OPENAI_API_KEY;
       
+      log(`Verificando configuração da API OpenAI. Ambiente: ${process.env.NODE_ENV}`, "openai-service");
+      
       if (!apiKey) {
         log("Chave de API da OpenAI não configurada", "openai-service");
         return false;
@@ -25,6 +27,12 @@ class OpenAIService {
       if (apiKey.trim() === '') {
         log("Chave de API da OpenAI está vazia ou inválida", "openai-service");
         return false;
+      }
+
+      // Verificar formato básico da chave (começa com sk-)
+      if (!apiKey.startsWith('sk-')) {
+        log("Aviso: a chave da API OpenAI pode estar em um formato inválido (deve começar com 'sk-')", "openai-service");
+        // Não retornamos falso aqui, pois o formato pode mudar no futuro
       }
 
       this.openai = new OpenAI({ apiKey });

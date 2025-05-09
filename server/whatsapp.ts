@@ -185,6 +185,29 @@ class WhatsAppService implements WhatsAppManager {
             }
           }
         }
+      },
+      
+      // Métodos adicionais necessários em produção
+      sendMessage: async (to: string, content: string, options?: any) => {
+        log(`🔧 [DEV] Simulando envio de mensagem para ${to}`, 'whatsapp');
+        return { id: { _serialized: `simulated-msg-${Date.now()}` } };
+      },
+      
+      getState: () => 'CONNECTED',
+      
+      destroy: () => {
+        log('🔧 [DEV] Simulando destruição do cliente WhatsApp', 'whatsapp');
+        this.isConnected = false;
+        this.isInitialized = false;
+        return Promise.resolve();
+      },
+      
+      // Para preparar o cliente para produção
+      initialize: async () => {
+        log('🔧 [DEV] Simulando inicialização do cliente WhatsApp', 'whatsapp');
+        this.isInitialized = true;
+        this.isConnected = true;
+        return true;
       }
     } as any;
     
