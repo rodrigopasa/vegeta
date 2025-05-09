@@ -29,13 +29,19 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex flex-col h-screen">
       <Header />
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden bg-[hsl(var(--background-light))]">
         <Sidebar />
-        {children}
+        <main className="flex-1 overflow-x-hidden overflow-y-auto p-4">
+          {children}
+        </main>
       </div>
       
-      <footer className="bg-[hsl(var(--whatsapp-dark-green))] text-white p-3 text-center">
-        Desenvolvido Por Rodrigo Pasa
+      <footer className="bg-[hsl(var(--primary-dark))] text-white py-3 text-center text-sm font-medium">
+        <div className="flex items-center justify-center space-x-1">
+          <span>Desenvolvido Por</span>
+          <span className="font-bold">Rodrigo Pasa</span>
+          <span className="text-white/70 text-xs ml-2">© {new Date().getFullYear()}</span>
+        </div>
       </footer>
     </div>
   );
