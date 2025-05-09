@@ -13,6 +13,7 @@ interface WhatsAppInstance {
   isConnected?: boolean;
   isInitialized?: boolean;
   qrCode?: string | null;
+  isConnecting?: boolean; // Campo adicional para uso na interface, não persiste no banco
 }
 
 interface Contact {
@@ -94,6 +95,9 @@ export const WhatsAppProvider: React.FC<WhatsAppProviderProps> = ({ children }) 
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
+  // Estado para rastrear quais instâncias estão em processo de conexão
+  const [connectingInstances, setConnectingInstances] = useState<Record<number, boolean>>({});
+  
   const [webSocket, setWebSocket] = useState<WebSocket | null>(null);
   const { toast } = useToast();
 
@@ -168,10 +172,13 @@ export const WhatsAppProvider: React.FC<WhatsAppProviderProps> = ({ children }) 
             
           case 'QR_CODE':
             if (instanceId) {
+              // Atualizamos apenas os campos que existem no schema
               updateInstanceStatus(instanceId, {
-                qrCode: data.payload.qrCode,
-                isConnecting: true
+                qrCode: data.payload.qrCode
               });
+              
+              // Tratamos o estado de conectando no contexto local apenas
+              setConnectingInstances(prev => ({ ...prev, [instanceId]: true }));
               
               // Update active QR code if this is the active instance
               if (instanceId === activeInstanceId) {
@@ -383,7 +390,13 @@ export const WhatsAppProvider: React.FC<WhatsAppProviderProps> = ({ children }) 
 
   const initializeWhatsApp = async (instanceId: number) => {
     try {
-      setIsConnecting(true);
+      // Atualizamos o estado de conexão para a instância ativa
+      if (instanceId === activeInstanceId) {
+        setIsConnecting(true);
+      }
+      
+      // Atualizamos o estado local e na lista de instâncias
+      setConnectingInstances(prev => ({ ...prev, [instanceId]: true }));
       updateInstanceStatus(instanceId, { isConnecting: true });
       
       await apiRequest('POST', '/api/whatsapp/initialize', { instanceId });
@@ -395,7 +408,13 @@ export const WhatsAppProvider: React.FC<WhatsAppProviderProps> = ({ children }) 
         variant: 'destructive',
       });
       
-      setIsConnecting(false);
+      // Limpar estado de conexão
+      if (instanceId === activeInstanceId) {
+        setIsConnecting(false);
+      }
+      
+      // Limpar estado de conectando no contexto local e na lista
+      setConnectingInstances(prev => ({ ...prev, [instanceId]: false }));
       updateInstanceStatus(instanceId, { isConnecting: false });
     }
   };
