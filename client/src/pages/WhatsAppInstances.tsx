@@ -84,9 +84,18 @@ const WhatsAppInstances: React.FC = () => {
     return { label: 'Desconectado', variant: 'destructive' };
   };
 
-  // Efeito para recarregar as instâncias quando a página for carregada
+  // Efeito para recarregar as instâncias quando a página for carregada - apenas uma vez
   useEffect(() => {
+    // Flag para controlar se o efeito já foi executado
+    let isExecuted = false;
+    
     const fetchData = async () => {
+      // Se já executou, não faz nada
+      if (isExecuted) return;
+      
+      // Marca como executado
+      isExecuted = true;
+      
       try {
         // Utiliza fetch diretamente para garantir que as instâncias estejam atualizadas
         const response = await fetch('/api/whatsapp/instances');
@@ -94,11 +103,13 @@ const WhatsAppInstances: React.FC = () => {
           throw new Error('Erro ao carregar instâncias');
         }
         
-        // Exibe toast de sucesso
-        toast({
-          title: 'Instâncias WhatsApp',
-          description: `${instances.length} instâncias carregadas com sucesso.`,
-        });
+        // Exibe toast de sucesso apenas se houver instâncias
+        if (instances.length > 0) {
+          toast({
+            title: 'Instâncias WhatsApp',
+            description: `${instances.length} instâncias carregadas com sucesso.`,
+          });
+        }
       } catch (error) {
         console.error('Erro ao carregar instâncias:', error);
         toast({
@@ -110,7 +121,12 @@ const WhatsAppInstances: React.FC = () => {
     };
     
     fetchData();
-  }, [toast]);
+    
+    // Função de limpeza para evitar memory leaks
+    return () => {
+      isExecuted = true;
+    };
+  }, []);
   
   // Função para definir uma instância como ativa
   const setActive = (id: number) => {
