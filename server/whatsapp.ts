@@ -122,15 +122,24 @@ class WhatsAppService implements WhatsAppManager {
     return status;
   }
 
-  async initializeClient(): Promise<void> {
+  async initializeClient(instanceId: number): Promise<void> {
     try {
-      if (this.client) {
-        this.client.destroy();
-        this.client = null;
+      // Get instance data
+      const instanceData = this.instances.get(instanceId);
+      if (!instanceData) {
+        throw new Error(`No instance found with ID: ${instanceId}`);
+      }
+      
+      // Destroy existing client if any
+      if (instanceData.client) {
+        instanceData.client.destroy();
+        instanceData.client = null;
       }
 
-      log('Initializing WhatsApp client', 'whatsapp');
-      this.client = new Client({
+      log(`Initializing WhatsApp client for instance ${instanceId} (${instanceData.name})`, 'whatsapp');
+      
+      // Create new client
+      instanceData.client = new Client({
         puppeteer: {
           headless: true,
           executablePath: '/nix/store/zi4f80l169xlmivz8vja8wlphq74qqk0-chromium-125.0.6422.141/bin/chromium',
@@ -139,28 +148,49 @@ class WhatsAppService implements WhatsAppManager {
       });
 
       // Register event handlers
-      this.client.on('qr', (qr: string) => {
-        log('QR Code received', 'whatsapp');
-        this.qrCode = qr;
+      instanceData.client.on('qr', (qr: string) => {
+        log(`QR Code received for instance ${instanceId}`, 'whatsapp');
+        instanceData.qrCode = qr;
+        
+        // Update instance data in map
+        this.instances.set(instanceId, instanceData);
+        
+        // Broadcast to clients
         this.broadcastToClients({
           type: 'QR_CODE',
-          payload: qr
+          payload: { 
+            instanceId,
+            qrCode: qr
+          }
         });
       });
 
-      this.client.on('authenticated', () => {
-        log('WhatsApp authenticated', 'whatsapp');
-        this.qrCode = null;
+      instanceData.client.on('authenticated', () => {
+        log(`WhatsApp authenticated for instance ${instanceId}`, 'whatsapp');
+        instanceData.qrCode = null;
+        
+        // Update instance data in map
+        this.instances.set(instanceId, instanceData);
+        
+        // Broadcast to clients
         this.broadcastToClients({
           type: 'AUTHENTICATED',
-          payload: { authenticated: true }
+          payload: { 
+            instanceId,
+            authenticated: true 
+          }
+        });
+        
+        // Update last connected timestamp in database
+        dbStorage.updateWhatsappInstance(instanceId, {
+          lastConnectedAt: new Date()
         });
       });
       
       // Eventos de atualização de status de mensagem
-      this.client.on('message_ack', async (message: any) => {
+      instanceData.client.on('message_ack', async (message: any) => {
         try {
-          log(`Message ACK received: ${message.id._serialized} - Status: ${message.ack}`, 'whatsapp');
+          log(`Message ACK received on instance ${instanceId}: ${message.id._serialized} - Status: ${message.ack}`, 'whatsapp');
           
           // Mapear os códigos de status do WhatsApp para nossos status
           // 0: pendente, 1: enviado para o servidor, 2: recebido no dispositivo, 3: lido
@@ -179,7 +209,7 @@ class WhatsAppService implements WhatsAppManager {
           
           // Buscar mensagens no nosso banco para atualizar pelo ID do WhatsApp
           // Este é um método simplificado, pode precisar ser adaptado
-          const messages = await dbStorage.getMessages();
+          const messages = await dbStorage.getMessages(instanceId);
           for (const dbMessage of messages) {
             if (dbMessage.status === 'sent' || dbMessage.status === 'delivered') {
               await dbStorage.updateMessage(dbMessage.id, { status });
@@ -189,63 +219,109 @@ class WhatsAppService implements WhatsAppManager {
           this.broadcastToClients({
             type: 'MESSAGE_STATUS_UPDATE',
             payload: { 
+              instanceId,
               messageId: message.id._serialized,
               status
             }
           });
         } catch (error) {
-          log(`Error processing message ACK: ${error}`, 'whatsapp');
+          log(`Error processing message ACK for instance ${instanceId}: ${error}`, 'whatsapp');
         }
       });
 
-      this.client.on('auth_failure', (msg: string) => {
-        log(`Authentication failure: ${msg}`, 'whatsapp');
-        this.isConnected = false;
+      instanceData.client.on('auth_failure', (msg: string) => {
+        log(`Authentication failure for instance ${instanceId}: ${msg}`, 'whatsapp');
+        instanceData.isConnected = false;
+        
+        // Update instance data in map
+        this.instances.set(instanceId, instanceData);
+        
+        // Broadcast to clients
         this.broadcastToClients({
           type: 'AUTH_FAILURE',
-          payload: { message: msg }
+          payload: { 
+            instanceId,
+            message: msg 
+          }
         });
       });
 
-      this.client.on('ready', async () => {
-        log('WhatsApp client is ready', 'whatsapp');
-        this.isConnected = true;
-        this.isInitialized = true;
-        this.qrCode = null;
+      instanceData.client.on('ready', async () => {
+        log(`WhatsApp client for instance ${instanceId} is ready`, 'whatsapp');
+        instanceData.isConnected = true;
+        instanceData.isInitialized = true;
+        instanceData.qrCode = null;
         
+        // Update instance data in map
+        this.instances.set(instanceId, instanceData);
+        
+        // Update last connected timestamp in database
+        await dbStorage.updateWhatsappInstance(instanceId, {
+          lastConnectedAt: new Date()
+        });
+        
+        // Broadcast to clients
         this.broadcastToClients({
           type: 'READY',
-          payload: { isConnected: true }
+          payload: { 
+            instanceId,
+            isConnected: true 
+          }
         });
         
         // Sync contacts when client is ready
-        await this.refreshContacts();
+        await this.refreshContacts(instanceId);
       });
 
-      this.client.on('disconnected', (reason: string) => {
-        log(`WhatsApp client disconnected: ${reason}`, 'whatsapp');
-        this.isConnected = false;
+      instanceData.client.on('disconnected', (reason: string) => {
+        log(`WhatsApp client for instance ${instanceId} disconnected: ${reason}`, 'whatsapp');
+        instanceData.isConnected = false;
+        
+        // Update instance data in map
+        this.instances.set(instanceId, instanceData);
+        
+        // Broadcast to clients
         this.broadcastToClients({
           type: 'DISCONNECTED',
-          payload: { reason }
+          payload: { 
+            instanceId,
+            reason 
+          }
         });
       });
 
-      await this.client.initialize();
-      this.isInitialized = true;
+      await instanceData.client.initialize();
+      instanceData.isInitialized = true;
+      
+      // Update instance data in map
+      this.instances.set(instanceId, instanceData);
+      
     } catch (error) {
-      log(`Error initializing WhatsApp client: ${error}`, 'whatsapp');
-      this.isInitialized = false;
-      this.isConnected = false;
+      log(`Error initializing WhatsApp client for instance ${instanceId}: ${error}`, 'whatsapp');
+      
+      const instanceData = this.instances.get(instanceId);
+      if (instanceData) {
+        instanceData.isInitialized = false;
+        instanceData.isConnected = false;
+        
+        // Update instance data in map
+        this.instances.set(instanceId, instanceData);
+      }
+      
+      // Broadcast to clients
       this.broadcastToClients({
         type: 'INIT_ERROR',
-        payload: { error: (error as Error).message }
+        payload: { 
+          instanceId,
+          error: (error as Error).message 
+        }
       });
     }
   }
 
-  getQRCode(): string | null {
-    return this.qrCode;
+  getQRCode(instanceId: number): string | null {
+    const instanceData = this.instances.get(instanceId);
+    return instanceData ? instanceData.qrCode : null;
   }
 
   // Funções para processar variáveis na mensagem
@@ -290,6 +366,7 @@ class WhatsAppService implements WhatsAppManager {
   }
 
   async sendMessage(
+    instanceId: number,
     to: string, 
     content: string, 
     recipientName: string | null = null, 
@@ -298,8 +375,14 @@ class WhatsAppService implements WhatsAppManager {
     mediaCaption: string | null = null
   ): Promise<string> {
     try {
-      if (!this.client || !this.isConnected) {
-        throw new Error('WhatsApp client is not connected');
+      // Get instance data
+      const instanceData = this.instances.get(instanceId);
+      if (!instanceData) {
+        throw new Error(`No instance found with ID: ${instanceId}`);
+      }
+      
+      if (!instanceData.client || !instanceData.isConnected) {
+        throw new Error(`WhatsApp client for instance ${instanceId} is not connected`);
       }
 
       // Format phone number if needed
@@ -312,7 +395,7 @@ class WhatsAppService implements WhatsAppManager {
 
       // Se tiver um caminho de mídia, enviar como anexo
       if (mediaPath && fs.existsSync(mediaPath)) {
-        log(`Sending media message from path: ${mediaPath}`, 'whatsapp');
+        log(`Sending media message from instance ${instanceId} using path: ${mediaPath}`, 'whatsapp');
         
         // Obter o tipo MIME do arquivo
         const mimeType = mime.lookup(mediaPath) || 'application/octet-stream';
@@ -330,43 +413,51 @@ class WhatsAppService implements WhatsAppManager {
         const caption = mediaCaption || processedContent;
         
         // Enviar mensagem com mídia
-        const response = await this.client.sendMessage(chatId, media, { caption });
+        const response = await instanceData.client.sendMessage(chatId, media, { caption });
         
-        log(`Media message sent successfully with ID: ${response.id._serialized}`, 'whatsapp');
+        log(`Media message sent successfully from instance ${instanceId} with ID: ${response.id._serialized}`, 'whatsapp');
         return response.id._serialized;
       }
       else {
         // Enviar mensagem de texto normal
-        const response = await this.client.sendMessage(chatId, processedContent);
+        const response = await instanceData.client.sendMessage(chatId, processedContent);
+        log(`Text message sent successfully from instance ${instanceId} with ID: ${response.id._serialized}`, 'whatsapp');
         return response.id._serialized;
       }
     } catch (error) {
-      log(`Error sending message: ${error}`, 'whatsapp');
+      log(`Error sending message from instance ${instanceId}: ${error}`, 'whatsapp');
       throw error;
     }
   }
 
-  async refreshContacts(): Promise<void> {
+  async refreshContacts(instanceId: number): Promise<void> {
     try {
-      if (!this.client || !this.isConnected) {
-        return;
+      // Get instance data
+      const instanceData = this.instances.get(instanceId);
+      if (!instanceData) {
+        throw new Error(`No instance found with ID: ${instanceId}`);
+      }
+      
+      if (!instanceData.client || !instanceData.isConnected) {
+        throw new Error(`WhatsApp client for instance ${instanceId} is not connected`);
       }
 
-      log('Refreshing contacts', 'whatsapp');
-      const contacts = await this.client.getContacts();
-      const chats = await this.client.getChats();
+      log(`Refreshing contacts for instance ${instanceId}`, 'whatsapp');
+      const contacts = await instanceData.client.getContacts();
+      const chats = await instanceData.client.getChats();
       
       // Process contacts
       for (const contact of contacts) {
         if (contact.isMyContact && contact.name) {
-          const existingContact = await dbStorage.getContactByPhone(contact.id._serialized);
+          const existingContact = await dbStorage.getContactByPhone(contact.id._serialized, instanceId);
           
           if (!existingContact) {
             const newContact: InsertContact = {
               name: contact.name,
               phoneNumber: contact.id._serialized,
               isGroup: false,
-              memberCount: null
+              memberCount: null,
+              instanceId: instanceId
             };
             await dbStorage.createContact(newContact);
           }
@@ -376,7 +467,7 @@ class WhatsAppService implements WhatsAppManager {
       // Process groups
       for (const chat of chats) {
         if (chat.isGroup) {
-          const existingGroup = await dbStorage.getContactByPhone(chat.id._serialized);
+          const existingGroup = await dbStorage.getContactByPhone(chat.id._serialized, instanceId);
           
           if (!existingGroup) {
             const participants = await chat.participants || [];
@@ -384,51 +475,62 @@ class WhatsAppService implements WhatsAppManager {
               name: chat.name,
               phoneNumber: chat.id._serialized,
               isGroup: true,
-              memberCount: participants.length
+              memberCount: participants.length,
+              instanceId: instanceId
             };
             await dbStorage.createContact(newGroup);
           }
         }
       }
       
-      log('Contacts refreshed successfully', 'whatsapp');
+      log(`Contacts refreshed successfully for instance ${instanceId}`, 'whatsapp');
       this.broadcastToClients({
         type: 'CONTACTS_REFRESHED',
-        payload: { success: true }
+        payload: { 
+          instanceId,
+          success: true 
+        }
       });
     } catch (error) {
-      log(`Error refreshing contacts: ${error}`, 'whatsapp');
+      log(`Error refreshing contacts for instance ${instanceId}: ${error}`, 'whatsapp');
       this.broadcastToClients({
         type: 'CONTACTS_REFRESH_ERROR',
-        payload: { error: (error as Error).message }
+        payload: { 
+          instanceId,
+          error: (error as Error).message 
+        }
       });
     }
   }
 
   // Método público para enviar notificações de status a partir de fora da classe
   async sendStatusNotification(
+    instanceId: number,
     success: boolean, 
     messageInfo: { 
       id: number, 
       recipient: string, 
       recipientName?: string | null,
       content: string,
-      isGroup?: boolean | null
+      isGroup?: boolean | null,
+      instanceId: number
     },
     errorMessage?: string
   ): Promise<void> {
-    return this._sendStatusNotification(success, messageInfo, errorMessage);
+    return this._sendStatusNotification(instanceId, success, messageInfo, errorMessage);
   }
 
   // Função interna para enviar notificação de status para o administrador
   private async _sendStatusNotification(
+    instanceId: number,
     success: boolean, 
     messageInfo: { 
       id: number, 
       recipient: string, 
       recipientName?: string | null,
       content: string,
-      isGroup?: boolean | null
+      isGroup?: boolean | null,
+      instanceId: number
     },
     errorMessage?: string
   ) {
@@ -439,17 +541,17 @@ class WhatsAppService implements WhatsAppManager {
       
       let statusMessage = "";
       if (success) {
-        statusMessage = `✅ Mensagem #${messageInfo.id} enviada com sucesso para ${recipientDisplay}${groupStatus}.\n\nConteúdo: "${this.truncateMessage(messageInfo.content, 100)}"`;
+        statusMessage = `✅ Mensagem #${messageInfo.id} enviada com sucesso para ${recipientDisplay}${groupStatus}.\n\nEnviada pela instância #${instanceId}\n\nConteúdo: "${this.truncateMessage(messageInfo.content, 100)}"`;
       } else {
-        statusMessage = `❌ Falha ao enviar mensagem #${messageInfo.id} para ${recipientDisplay}${groupStatus}.\n\nErro: ${errorMessage}\n\nConteúdo: "${this.truncateMessage(messageInfo.content, 100)}"`;
+        statusMessage = `❌ Falha ao enviar mensagem #${messageInfo.id} para ${recipientDisplay}${groupStatus}.\n\nEnviada pela instância #${instanceId}\n\nErro: ${errorMessage}\n\nConteúdo: "${this.truncateMessage(messageInfo.content, 100)}"`;
       }
       
       // Envia a notificação para o administrador
-      log(`Sending status notification to admin: ${adminPhone}`, 'whatsapp');
-      await this.sendMessage(adminPhone, statusMessage);
-      log('Status notification sent successfully', 'whatsapp');
+      log(`Sending status notification to admin: ${adminPhone} from instance ${instanceId}`, 'whatsapp');
+      await this.sendMessage(instanceId, adminPhone, statusMessage);
+      log(`Status notification sent successfully from instance ${instanceId}`, 'whatsapp');
     } catch (error) {
-      log(`Failed to send status notification: ${error}`, 'whatsapp');
+      log(`Failed to send status notification from instance ${instanceId}: ${error}`, 'whatsapp');
       // Não propagamos o erro para não interromper o fluxo principal
     }
   }

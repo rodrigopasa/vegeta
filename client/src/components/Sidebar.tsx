@@ -10,6 +10,7 @@ const Sidebar: React.FC = () => {
 
   const menuItems = [
     { path: '/', icon: 'fa-home', label: 'Dashboard' },
+    { path: '/instances', icon: 'fa-mobile-alt', label: 'Instâncias' },
     { path: '/contacts', icon: 'fa-address-book', label: 'Contatos' },
     { path: '/groups', icon: 'fa-users', label: 'Grupos' },
     { path: '/scheduled', icon: 'fa-calendar-alt', label: 'Agendadas', count: scheduledCount },
