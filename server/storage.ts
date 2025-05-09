@@ -100,9 +100,13 @@ export class MemStorage implements IStorage {
   async createWhatsappInstance(instance: InsertWhatsappInstance): Promise<WhatsappInstance> {
     const id = this.instanceCurrentId++;
     const now = new Date();
+    // Correção para evitar que os campos opcionais sejam passados como undefined
     const newInstance: WhatsappInstance = { 
-      ...instance, 
       id,
+      name: instance.name,
+      phoneNumber: instance.phoneNumber,
+      description: instance.description || null,
+      isActive: instance.isActive === undefined ? true : instance.isActive,
       createdAt: now,
       lastConnectedAt: null 
     };
