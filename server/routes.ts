@@ -173,7 +173,152 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Rota direta para a página de login estática
   app.get("/static-login.html", (req: Request, res: Response) => {
-    res.sendFile("static-login.html", { root: "./client" });
+    // Em ES modules, __dirname não está definido, então precisamos usar import.meta.url
+    const currentFilePath = new URL(import.meta.url).pathname;
+    const currentDir = path.dirname(currentFilePath);
+    
+    // Usando path.resolve para garantir que o caminho esteja correto em produção e desenvolvimento
+    const staticLoginPath = path.resolve(currentDir, '../client/static-login.html');
+    console.log('Serving static login from path:', staticLoginPath);
+    
+    // Checando se o arquivo existe antes de tentar servi-lo
+    if (fs.existsSync(staticLoginPath)) {
+      res.sendFile(staticLoginPath);
+    } else {
+      // Falha: tentar outros caminhos alternativos
+      console.error('Arquivo static-login.html não encontrado em:', staticLoginPath);
+      
+      // Tentar outras alternativas
+      const possiblePaths = [
+        path.resolve(currentDir, '../static-login.html'),
+        path.resolve(process.cwd(), 'client/static-login.html'),
+        path.resolve(process.cwd(), 'static-login.html')
+      ];
+      
+      // Tentar cada caminho alternativo
+      for (const altPath of possiblePaths) {
+        if (fs.existsSync(altPath)) {
+          console.log('Arquivo encontrado em caminho alternativo:', altPath);
+          return res.sendFile(altPath);
+        }
+      }
+      
+      // Se nenhum caminho funcionar, criar uma página de login simples dinamicamente
+      res.send(`
+        <!DOCTYPE html>
+        <html lang="pt-br">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>PaZap - Login</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: linear-gradient(to bottom, #128C7E, #075E54);
+                  display: flex; justify-content: center; align-items: center; height: 100vh; color: #333; }
+            .container { background-color: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); width: 350px; }
+            h1 { text-align: center; color: #128C7E; margin-bottom: 1.5rem; }
+            .form-group { margin-bottom: 1rem; }
+            label { display: block; margin-bottom: 0.5rem; font-weight: bold; }
+            input { width: 100%; padding: 0.75rem; box-sizing: border-box; border: 1px solid #ddd; border-radius: 4px; }
+            button { width: 100%; padding: 0.75rem; background-color: #128C7E; color: white; border: none;
+                    border-radius: 4px; cursor: pointer; font-weight: bold; margin-top: 1rem; }
+            button:hover { background-color: #075E54; }
+            .error-message { color: #e74c3c; margin-top: 1rem; text-align: center; display: none; }
+            .footer { margin-top: 1.5rem; text-align: center; font-size: 0.8rem; color: #777; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1>PaZap</h1>
+            <div id="login-form">
+              <div class="form-group">
+                <label for="username">Usuário</label>
+                <input type="text" id="username" placeholder="Digite seu nome de usuário">
+              </div>
+              <div class="form-group">
+                <label for="password">Senha</label>
+                <input type="password" id="password" placeholder="Digite sua senha">
+              </div>
+              <button id="login-button">Entrar</button>
+              <div id="error-message" class="error-message"></div>
+            </div>
+            <div class="footer">
+              Disparador de Mensagens para WhatsApp<br>
+              Desenvolvido Por Rodrigo Pasa
+            </div>
+          </div>
+          <script>
+            window.addEventListener('DOMContentLoaded', async function() {
+              try {
+                const countResponse = await fetch('/api/users/count');
+                const { count } = await countResponse.json();
+                const loginButton = document.getElementById('login-button');
+                const pageTitle = document.querySelector('h1');
+                
+                if (count === 0) {
+                  loginButton.textContent = 'Criar Conta Administrador';
+                  pageTitle.textContent = 'PaZap - Criar Conta';
+                  document.title = 'PaZap - Criar Conta Administrador';
+                } else {
+                  loginButton.textContent = 'Entrar';
+                  pageTitle.textContent = 'PaZap - Login';
+                }
+              } catch (error) {
+                console.error('Erro ao verificar usuários:', error);
+              }
+            });
+          
+            document.getElementById('login-button').addEventListener('click', async function() {
+              const username = document.getElementById('username').value;
+              const password = document.getElementById('password').value;
+              const errorMessage = document.getElementById('error-message');
+              
+              if (!username || !password) {
+                errorMessage.textContent = 'Por favor, preencha todos os campos';
+                errorMessage.style.display = 'block';
+                return;
+              }
+              
+              try {
+                const countResponse = await fetch('/api/users/count');
+                const { count } = await countResponse.json();
+                const endpoint = count === 0 ? '/api/register' : '/api/login';
+                
+                const response = await fetch(endpoint, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  credentials: 'include',
+                  body: JSON.stringify({ username, password })
+                });
+                
+                if (!response.ok) {
+                  const errorData = await response.json();
+                  throw new Error(errorData.error || (count === 0 ? 'Erro ao criar conta' : 'Credenciais inválidas'));
+                }
+                
+                const userData = await response.json();
+                
+                errorMessage.textContent = count === 0 
+                  ? 'Conta criada com sucesso! Redirecionando...' 
+                  : 'Login realizado com sucesso! Redirecionando...';
+                errorMessage.style.display = 'block';
+                errorMessage.style.color = '#27ae60';
+                
+                setTimeout(() => {
+                  window.location.href = '/';
+                }, 1000);
+                
+              } catch (error) {
+                console.error("Erro:", error);
+                errorMessage.textContent = error.message || 'Ocorreu um erro ao processar sua solicitação';
+                errorMessage.style.display = 'block';
+                errorMessage.style.color = '#e74c3c';
+              }
+            });
+          </script>
+        </body>
+        </html>
+      `);
+    }
   });
   
   // ANTES DO MIDDLEWARE: Endpoint para resetar usuários (não protegido)
@@ -222,8 +367,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/whatsapp/status", (req: Request, res: Response) => {
     res.json({
       isInitialized: whatsAppService.isInitialized,
-      isConnected: whatsAppService.isConnected
+      isConnected: whatsAppService.isConnected,
+      rateLimitSettings: whatsAppService.getRateLimitSettings()
     });
+  });
+  
+  // Rota para configurar o sistema de rate limiting
+  app.post("/api/whatsapp/rate-limit", (req: Request, res: Response) => {
+    try {
+      const settings = req.body;
+      whatsAppService.setRateLimit(settings);
+      res.json({
+        success: true,
+        settings: whatsAppService.getRateLimitSettings()
+      });
+    } catch (error) {
+      res.status(500).json({ message: (error as Error).message });
+    }
   });
 
   app.get("/api/whatsapp/qr-code", (req: Request, res: Response) => {

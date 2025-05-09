@@ -24,6 +24,8 @@ interface WhatsAppManager {
   getQRCode(): string | null;
   sendMessage(to: string, content: string, recipientName?: string | null, mediaPath?: string | null, mediaType?: string | null, mediaCaption?: string | null): Promise<string>;
   refreshContacts(): Promise<void>;
+  setRateLimit(options: { messagesPerBatch?: number; delayBetweenMessages?: number; delayBetweenBatches?: number; isEnabled?: boolean; }): any;
+  getRateLimitSettings(): { messagesPerBatch: number; delayBetweenMessages: number; delayBetweenBatches: number; isEnabled: boolean; };
 }
 
 class WhatsAppService implements WhatsAppManager {
@@ -70,6 +72,64 @@ class WhatsAppService implements WhatsAppManager {
     });
   }
 
+  // Controle de taxa para evitar bloqueios
+  private messageQueue: Array<{
+    to: string;
+    content: string;
+    recipientName?: string | null;
+    mediaPath?: string | null;
+    mediaType?: string | null;
+    mediaCaption?: string | null;
+    resolve: (value: string) => void;
+    reject: (reason: Error) => void;
+  }> = [];
+  private isProcessingQueue: boolean = false;
+  
+  // Configurações de rate limiting
+  private messagingRateLimit = {
+    messagesPerBatch: 10,       // Número de mensagens por lote
+    delayBetweenMessages: 3000, // Delay entre mensagens em ms (3s)
+    delayBetweenBatches: 30000, // Delay entre lotes em ms (30s)
+    isEnabled: true             // Ativar/desativar rate limiting
+  };
+  
+  // Método para configurar o rate limiting
+  setRateLimit(options: {
+    messagesPerBatch?: number;
+    delayBetweenMessages?: number;
+    delayBetweenBatches?: number;
+    isEnabled?: boolean;
+  }) {
+    // Validar limites mínimos para prevenir bloqueios
+    if (options.messagesPerBatch !== undefined && options.messagesPerBatch < 1) {
+      options.messagesPerBatch = 1;
+    }
+    
+    if (options.delayBetweenMessages !== undefined && options.delayBetweenMessages < 1000) {
+      options.delayBetweenMessages = 1000; // Mínimo de 1 segundo entre mensagens
+    }
+    
+    if (options.delayBetweenBatches !== undefined && options.delayBetweenBatches < 5000) {
+      options.delayBetweenBatches = 5000; // Mínimo de 5 segundos entre lotes
+    }
+    
+    Object.assign(this.messagingRateLimit, options);
+    log(`Rate limiting configurado: ${JSON.stringify(this.messagingRateLimit)}`, 'whatsapp');
+    
+    // Notificar os clientes sobre a mudança de configuração
+    this.broadcastToClients({
+      type: 'RATE_LIMIT_UPDATED',
+      payload: this.messagingRateLimit
+    });
+    
+    return this.getRateLimitSettings();
+  }
+  
+  // Método para obter as configurações atuais de rate limiting
+  getRateLimitSettings() {
+    return { ...this.messagingRateLimit };
+  }
+  
   async initializeClient(): Promise<void> {
     try {
       if (this.client) {
@@ -78,12 +138,40 @@ class WhatsAppService implements WhatsAppManager {
       }
 
       log('Initializing WhatsApp client', 'whatsapp');
-      this.client = new Client({
-        puppeteer: {
-          headless: true,
-          executablePath: '/nix/store/zi4f80l169xlmivz8vja8wlphq74qqk0-chromium-125.0.6422.141/bin/chromium',
-          args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-accelerated-2d-canvas', '--no-first-run', '--no-zygote', '--single-process']
+      
+      // Configuração do puppeteer com múltiplas opções para compatibilidade
+      const puppeteerOptions = {
+        headless: true,
+        args: [
+          '--no-sandbox', 
+          '--disable-setuid-sandbox', 
+          '--disable-dev-shm-usage', 
+          '--disable-accelerated-2d-canvas', 
+          '--no-first-run', 
+          '--no-zygote', 
+          '--single-process'
+        ]
+      };
+      
+      // Detectar se estamos em ambiente Replit ou produção
+      // e tentar usar um caminho de execução específico apenas se necessário
+      if (process.env.NODE_ENV === 'production') {
+        try {
+          // Em produção, tentar usar a localização específica do Chromium no Replit
+          const { execSync } = require('child_process');
+          const chromiumPath = execSync('which chromium-browser || which chromium || which chrome').toString().trim();
+          
+          if (chromiumPath) {
+            log(`Usando Chromium em: ${chromiumPath}`, 'whatsapp');
+            Object.assign(puppeteerOptions, { executablePath: chromiumPath });
+          }
+        } catch (error) {
+          log(`Não foi possível localizar Chromium, usando binário padrão: ${error}`, 'whatsapp');
         }
+      }
+      
+      this.client = new Client({
+        puppeteer: puppeteerOptions
       });
 
       // Register event handlers
@@ -237,6 +325,7 @@ class WhatsAppService implements WhatsAppManager {
     });
   }
 
+  // Método principal para enviar mensagens - usa fila com rate limiting
   async sendMessage(
     to: string, 
     content: string, 
@@ -245,11 +334,126 @@ class WhatsAppService implements WhatsAppManager {
     mediaType: string | null = null, 
     mediaCaption: string | null = null
   ): Promise<string> {
-    try {
-      if (!this.client || !this.isConnected) {
-        throw new Error('WhatsApp client is not connected');
-      }
+    if (!this.client || !this.isConnected) {
+      throw new Error('WhatsApp client is not connected');
+    }
+    
+    // Se o rate limiting estiver desativado, enviar diretamente
+    if (!this.messagingRateLimit.isEnabled) {
+      return this._sendMessageDirectly(to, content, recipientName, mediaPath, mediaType, mediaCaption);
+    }
 
+    // Caso contrário, adicionar à fila e processar em lotes
+    return new Promise((resolve, reject) => {
+      this.messageQueue.push({
+        to,
+        content,
+        recipientName,
+        mediaPath,
+        mediaType,
+        mediaCaption,
+        resolve,
+        reject
+      });
+      
+      // Iniciar o processamento da fila se não estiver em andamento
+      if (!this.isProcessingQueue) {
+        this.processMessageQueue();
+      }
+    });
+  }
+  
+  // Processador de fila de mensagens com rate limiting
+  private async processMessageQueue() {
+    if (this.isProcessingQueue || this.messageQueue.length === 0) {
+      return;
+    }
+    
+    this.isProcessingQueue = true;
+    log(`Iniciando processamento de fila: ${this.messageQueue.length} mensagens`, 'whatsapp');
+    
+    try {
+      // Processar a fila em lotes
+      while (this.messageQueue.length > 0) {
+        // Extrair o próximo lote (até messagesPerBatch)
+        const batch = this.messageQueue.splice(0, Math.min(this.messageQueue.length, this.messagingRateLimit.messagesPerBatch));
+        log(`Processando lote de ${batch.length} mensagens`, 'whatsapp');
+        
+        // Enviar cada mensagem do lote com um atraso entre elas
+        for (let i = 0; i < batch.length; i++) {
+          const { to, content, recipientName, mediaPath, mediaType, mediaCaption, resolve, reject } = batch[i];
+          
+          try {
+            // Enviar a mensagem diretamente
+            const messageId = await this._sendMessageDirectly(to, content, recipientName, mediaPath, mediaType, mediaCaption);
+            resolve(messageId);
+            
+            // Atualizar UI com status
+            this.broadcastToClients({
+              type: 'QUEUE_PROGRESS',
+              payload: {
+                queueSize: this.messageQueue.length,
+                currentBatchProgress: i + 1,
+                totalBatchSize: batch.length,
+                status: 'processing'
+              }
+            });
+            
+            // Aplicar atraso entre mensagens (exceto a última do lote)
+            if (i < batch.length - 1) {
+              log(`Aguardando ${this.messagingRateLimit.delayBetweenMessages}ms antes da próxima mensagem`, 'whatsapp');
+              await new Promise(resolve => setTimeout(resolve, this.messagingRateLimit.delayBetweenMessages));
+            }
+          } catch (error) {
+            log(`Erro ao enviar mensagem na fila: ${error}`, 'whatsapp');
+            reject(error as Error);
+          }
+        }
+        
+        // Se ainda houver mensagens na fila, aguardar um tempo entre lotes
+        if (this.messageQueue.length > 0) {
+          log(`Lote completo. Aguardando ${this.messagingRateLimit.delayBetweenBatches}ms antes do próximo lote...`, 'whatsapp');
+          
+          // Informar aos clientes que estamos em pausa entre lotes
+          this.broadcastToClients({
+            type: 'QUEUE_BATCH_PAUSE',
+            payload: {
+              queueSize: this.messageQueue.length,
+              pauseDuration: this.messagingRateLimit.delayBetweenBatches,
+              reason: 'Pausa entre lotes para evitar bloqueio do WhatsApp'
+            }
+          });
+          
+          await new Promise(resolve => setTimeout(resolve, this.messagingRateLimit.delayBetweenBatches));
+        }
+      }
+      
+      log('Processamento da fila concluído com sucesso', 'whatsapp');
+      this.broadcastToClients({
+        type: 'QUEUE_COMPLETE',
+        payload: { success: true }
+      });
+    } catch (error) {
+      log(`Erro ao processar fila de mensagens: ${error}`, 'whatsapp');
+      this.broadcastToClients({
+        type: 'QUEUE_ERROR',
+        payload: { error: (error as Error).message }
+      });
+    } finally {
+      this.isProcessingQueue = false;
+    }
+  }
+  
+  // Método interno para envio direto de mensagens sem rate limiting
+  private async _sendMessageDirectly(
+    to: string, 
+    content: string, 
+    recipientName: string | null = null, 
+    mediaPath: string | null = null, 
+    mediaType: string | null = null, 
+    mediaCaption: string | null = null
+  ): Promise<string> {
+    try {
       // Format phone number if needed
       const formattedNumber = to.includes('@g.us') ? to : to.replace(/\D/g, '');
       const chatId = to.includes('@g.us') ? to : `${formattedNumber}@c.us`;
