@@ -22,6 +22,7 @@ const Sidebar: React.FC = () => {
     { path: '/scheduled', icon: 'fa-calendar-alt', label: 'Agendadas', count: scheduledCount },
     { path: '/history', icon: 'fa-history', label: 'Histórico' },
     { path: '/chatbot', icon: 'fa-robot', label: 'Chatbot IA' },
+    { path: '/chatbot-settings', icon: 'fa-cog', label: 'Configurar Chatbot' },
   ];
 
   return (

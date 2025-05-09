@@ -289,10 +289,18 @@ const ChatbotDemo = () => {
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <span>Assistente Virtual</span>
-                <Button variant="outline" onClick={openAppointmentDialog}>
-                  <CalendarIcon2 className="mr-2 h-4 w-4" />
-                  Agendar
-                </Button>
+                <div className="flex space-x-2">
+                  <Button variant="outline" asChild>
+                    <a href="/chatbot-settings">
+                      <i className="fas fa-cog mr-2"></i>
+                      Configurações
+                    </a>
+                  </Button>
+                  <Button variant="outline" onClick={openAppointmentDialog}>
+                    <CalendarIcon2 className="mr-2 h-4 w-4" />
+                    Agendar
+                  </Button>
+                </div>
               </CardTitle>
             </CardHeader>
             <CardContent>
