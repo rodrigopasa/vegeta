@@ -1,329 +1,325 @@
 import React, { useState, useEffect } from 'react';
-import { useToast } from "@/hooks/use-toast";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2 } from 'lucide-react';
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useToast } from "@/hooks/use-toast";
+import { AlertCircle, CheckCircle2, Calendar, FileSpreadsheet } from "lucide-react";
+import { apiRequest } from '@/lib/queryClient';
 
-// Esquemas de validação
-const calendarFormSchema = z.object({
-  calendarId: z.string().min(1, "ID do calendário é obrigatório"),
-});
+// Interface para as configurações do Google Calendar
+interface CalendarConfig {
+  calendarId: string | null;
+  hasCredentials: boolean;
+  isInitialized: boolean;
+}
 
-const sheetsFormSchema = z.object({
-  spreadsheetId: z.string().min(1, "ID da planilha é obrigatório"),
-  sheetName: z.string().min(1, "Nome da aba é obrigatório"),
-});
+// Interface para as configurações do Google Sheets
+interface SheetsConfig {
+  spreadsheetId: string | null;
+  hasCredentials: boolean;
+  isInitialized: boolean;
+}
 
-type CalendarFormValues = z.infer<typeof calendarFormSchema>;
-type SheetsFormValues = z.infer<typeof sheetsFormSchema>;
-
-const GoogleIntegrations = () => {
+const GoogleIntegrations: React.FC = () => {
   const { toast } = useToast();
-  const [calendarStatus, setCalendarStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [sheetsStatus, setSheetsStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [calendarConfig, setCalendarConfig] = useState<{ calendarId: string } | null>(null);
-  const [sheetsConfig, setSheetsConfig] = useState<{ spreadsheetId: string, sheetName: string } | null>(null);
+  const [activeTab, setActiveTab] = useState<string>("calendar");
   
-  // Formulário do Calendar
-  const calendarForm = useForm<CalendarFormValues>({
-    resolver: zodResolver(calendarFormSchema),
-    defaultValues: {
-      calendarId: "",
+  // Estados para Google Calendar
+  const [calendarConfig, setCalendarConfig] = useState<CalendarConfig | null>(null);
+  const [calendarId, setCalendarId] = useState<string>("");
+  const [isCalendarLoading, setIsCalendarLoading] = useState<boolean>(false);
+  
+  // Estados para Google Sheets
+  const [sheetsConfig, setSheetsConfig] = useState<SheetsConfig | null>(null);
+  const [spreadsheetId, setSpreadsheetId] = useState<string>("");
+  const [sheetName, setSheetName] = useState<string>("Contatos");
+  const [isSheetsLoading, setIsSheetsLoading] = useState<boolean>(false);
+
+  // Carrega as configurações atuais do Google Calendar
+  const loadCalendarConfig = async () => {
+    try {
+      const response = await apiRequest<CalendarConfig>({
+        url: '/api/calendar/config',
+        method: 'GET'
+      });
+      
+      setCalendarConfig(response);
+      if (response.calendarId) {
+        setCalendarId(response.calendarId);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar configuração do Google Calendar:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar a configuração do Google Calendar",
+        variant: "destructive"
+      });
     }
-  });
-  
-  // Formulário do Sheets
-  const sheetsForm = useForm<SheetsFormValues>({
-    resolver: zodResolver(sheetsFormSchema),
-    defaultValues: {
-      spreadsheetId: "",
-      sheetName: "Contatos", // Nome padrão da aba
+  };
+
+  // Carrega as configurações atuais do Google Sheets
+  const loadSheetsConfig = async () => {
+    try {
+      const response = await apiRequest<SheetsConfig>({
+        url: '/api/sheets/config',
+        method: 'GET'
+      });
+      
+      setSheetsConfig(response);
+      if (response.spreadsheetId) {
+        setSpreadsheetId(response.spreadsheetId);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar configuração do Google Sheets:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar a configuração do Google Sheets",
+        variant: "destructive"
+      });
     }
-  });
-  
-  // Carregar configurações existentes
+  };
+
+  // Inicializa o Google Calendar com o ID fornecido
+  const initializeCalendar = async () => {
+    if (!calendarId.trim()) {
+      toast({
+        title: "Atenção",
+        description: "Por favor, informe o ID do calendário",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsCalendarLoading(true);
+    try {
+      const response = await apiRequest({
+        url: '/api/calendar/initialize',
+        method: 'POST',
+        data: { calendarId }
+      });
+      
+      toast({
+        title: "Sucesso",
+        description: "Google Calendar inicializado com sucesso",
+        variant: "default"
+      });
+      
+      // Recarrega a configuração
+      await loadCalendarConfig();
+    } catch (error) {
+      console.error('Erro ao inicializar Google Calendar:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível inicializar o Google Calendar. Verifique o ID do calendário e tente novamente.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCalendarLoading(false);
+    }
+  };
+
+  // Inicializa o Google Sheets com o ID fornecido
+  const initializeSheets = async () => {
+    if (!spreadsheetId.trim()) {
+      toast({
+        title: "Atenção",
+        description: "Por favor, informe o ID da planilha",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsSheetsLoading(true);
+    try {
+      const response = await apiRequest({
+        url: '/api/sheets/initialize',
+        method: 'POST',
+        data: { 
+          spreadsheetId,
+          sheetName: sheetName.trim() || "Contatos"
+        }
+      });
+      
+      toast({
+        title: "Sucesso",
+        description: "Google Sheets inicializado com sucesso",
+        variant: "default"
+      });
+      
+      // Recarrega a configuração
+      await loadSheetsConfig();
+    } catch (error) {
+      console.error('Erro ao inicializar Google Sheets:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível inicializar o Google Sheets. Verifique o ID da planilha e tente novamente.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSheetsLoading(false);
+    }
+  };
+
+  // Carrega as configurações ao montar o componente
   useEffect(() => {
-    const fetchCalendarConfig = async () => {
-      try {
-        const response = await fetch('/api/calendar/config');
-        if (response.ok) {
-          const data = await response.json();
-          setCalendarConfig(data);
-          calendarForm.reset({
-            calendarId: data.calendarId || "",
-          });
-        }
-      } catch (error) {
-        console.error('Erro ao carregar configuração do Calendar:', error);
-      }
-    };
-    
-    const fetchSheetsConfig = async () => {
-      try {
-        const response = await fetch('/api/sheets/config');
-        if (response.ok) {
-          const data = await response.json();
-          setSheetsConfig(data);
-          sheetsForm.reset({
-            spreadsheetId: data.spreadsheetId || "",
-            sheetName: data.sheetName || "Contatos",
-          });
-        }
-      } catch (error) {
-        console.error('Erro ao carregar configuração do Sheets:', error);
-      }
-    };
-    
-    fetchCalendarConfig();
-    fetchSheetsConfig();
+    loadCalendarConfig();
+    loadSheetsConfig();
   }, []);
-  
-  // Inicializar ou testar conexão do Calendar
-  const onSubmitCalendar = async (values: CalendarFormValues) => {
-    setCalendarStatus('loading');
-    try {
-      const response = await fetch('/api/calendar/initialize', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(values)
-      });
-      
-      if (!response.ok) {
-        throw new Error('Falha ao configurar o Google Calendar');
-      }
-      
-      const data = await response.json();
-      setCalendarConfig(values);
-      setCalendarStatus('success');
-      
-      toast({
-        title: "Google Calendar configurado!",
-        description: "A integração com o Google Calendar foi configurada com sucesso.",
-      });
-    } catch (error) {
-      console.error('Erro ao configurar Calendar:', error);
-      setCalendarStatus('error');
-      
-      toast({
-        title: "Erro",
-        description: "Não foi possível configurar o Google Calendar. Verifique as credenciais e tente novamente.",
-        variant: "destructive"
-      });
-    }
-  };
-  
-  // Inicializar ou testar conexão do Sheets
-  const onSubmitSheets = async (values: SheetsFormValues) => {
-    setSheetsStatus('loading');
-    try {
-      const response = await fetch('/api/sheets/initialize', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(values)
-      });
-      
-      if (!response.ok) {
-        throw new Error('Falha ao configurar o Google Sheets');
-      }
-      
-      const data = await response.json();
-      setSheetsConfig(values);
-      setSheetsStatus('success');
-      
-      toast({
-        title: "Google Sheets configurado!",
-        description: "A integração com o Google Sheets foi configurada com sucesso.",
-      });
-    } catch (error) {
-      console.error('Erro ao configurar Sheets:', error);
-      setSheetsStatus('error');
-      
-      toast({
-        title: "Erro",
-        description: "Não foi possível configurar o Google Sheets. Verifique as credenciais e tente novamente.",
-        variant: "destructive"
-      });
-    }
-  };
 
   return (
     <div className="container mx-auto py-6">
-      <h1 className="text-3xl font-bold mb-6">Integrações Google</h1>
+      <h1 className="text-2xl font-bold mb-6">Integrações Google</h1>
       
-      <Tabs defaultValue="calendar" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-6">
-          <TabsTrigger value="calendar">Google Calendar</TabsTrigger>
-          <TabsTrigger value="sheets">Google Sheets</TabsTrigger>
+      <Tabs defaultValue="calendar" value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="mb-4">
+          <TabsTrigger value="calendar" className="flex items-center gap-2">
+            <Calendar className="w-4 h-4" />
+            <span>Google Calendar</span>
+          </TabsTrigger>
+          <TabsTrigger value="sheets" className="flex items-center gap-2">
+            <FileSpreadsheet className="w-4 h-4" />
+            <span>Google Sheets</span>
+          </TabsTrigger>
         </TabsList>
         
-        {/* Configuração do Google Calendar */}
+        {/* Google Calendar Tab */}
         <TabsContent value="calendar">
           <Card>
             <CardHeader>
-              <CardTitle>Configuração do Google Calendar</CardTitle>
+              <CardTitle>Configurar Integração com Google Calendar</CardTitle>
               <CardDescription>
-                Configure a integração com o Google Calendar para gerenciar agendamentos.
+                Configure seu calendário do Google para gerenciar agendamentos diretamente pelo sistema.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
-                <Alert>
-                  <AlertTitle>Como configurar</AlertTitle>
+              {calendarConfig && !calendarConfig.hasCredentials && (
+                <Alert variant="destructive" className="mb-4">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Credenciais não configuradas</AlertTitle>
                   <AlertDescription>
-                    <ol className="list-decimal list-inside space-y-2 mt-2">
-                      <li>Acesse o <a href="https://console.cloud.google.com" target="_blank" className="text-blue-500 hover:underline">Google Cloud Console</a></li>
-                      <li>Crie um projeto (se ainda não tiver um)</li>
-                      <li>Habilite a API do Google Calendar</li>
-                      <li>Crie credenciais de conta de serviço</li>
-                      <li>Compartilhe seu calendário com o email da conta de serviço</li>
-                      <li>Copie o ID do calendário das configurações do Google Calendar</li>
-                    </ol>
+                    As credenciais do Google não estão configuradas corretamente.
+                    Você precisa configurar as variáveis de ambiente GOOGLE_CLIENT_EMAIL e GOOGLE_PRIVATE_KEY.
                   </AlertDescription>
                 </Alert>
-                
-                <Form {...calendarForm}>
-                  <form onSubmit={calendarForm.handleSubmit(onSubmitCalendar)} className="space-y-4">
-                    <FormField
-                      control={calendarForm.control}
-                      name="calendarId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>ID do Calendário</FormLabel>
-                          <FormControl>
-                            <Input {...field} placeholder="seu.email@gmail.com" />
-                          </FormControl>
-                          <FormDescription>
-                            O ID do calendário que será usado para agendamentos. Geralmente é seu email do Google.
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <Button 
-                      type="submit" 
-                      disabled={calendarStatus === 'loading'}
-                      className="w-full"
-                    >
-                      {calendarStatus === 'loading' ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Configurando...
-                        </>
-                      ) : calendarStatus === 'success' ? (
-                        'Configurado com Sucesso!'
-                      ) : (
-                        'Configurar Google Calendar'
-                      )}
-                    </Button>
-                  </form>
-                </Form>
+              )}
+              
+              {calendarConfig && calendarConfig.hasCredentials && calendarConfig.isInitialized && (
+                <Alert variant="default" className="mb-4 bg-green-50 text-green-800 border-green-200">
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <AlertTitle>Integração ativa</AlertTitle>
+                  <AlertDescription>
+                    O Google Calendar está configurado e ativo.
+                    ID atual: <code className="bg-green-100 px-1 py-0.5 rounded">{calendarConfig.calendarId}</code>
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="calendarId">ID do Google Calendar</Label>
+                  <Input
+                    id="calendarId"
+                    placeholder="exemplo@group.calendar.google.com"
+                    value={calendarId}
+                    onChange={(e) => setCalendarId(e.target.value)}
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Você pode encontrar o ID do seu calendário nas configurações do Google Calendar.
+                  </p>
+                </div>
               </div>
             </CardContent>
+            <CardFooter className="flex justify-between">
+              <Button variant="outline" onClick={() => loadCalendarConfig()}>
+                Cancelar
+              </Button>
+              <Button 
+                onClick={initializeCalendar} 
+                disabled={isCalendarLoading || !calendarConfig?.hasCredentials}
+              >
+                {isCalendarLoading ? "Configurando..." : "Configurar Calendário"}
+              </Button>
+            </CardFooter>
           </Card>
         </TabsContent>
         
-        {/* Configuração do Google Sheets */}
+        {/* Google Sheets Tab */}
         <TabsContent value="sheets">
           <Card>
             <CardHeader>
-              <CardTitle>Configuração do Google Sheets</CardTitle>
+              <CardTitle>Configurar Integração com Google Sheets</CardTitle>
               <CardDescription>
-                Configure a integração com o Google Sheets para gerenciar contatos e dados do CRM.
+                Configure sua planilha do Google para armazenar contatos e registros do sistema.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
-                <Alert>
-                  <AlertTitle>Como configurar</AlertTitle>
+              {sheetsConfig && !sheetsConfig.hasCredentials && (
+                <Alert variant="destructive" className="mb-4">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Credenciais não configuradas</AlertTitle>
                   <AlertDescription>
-                    <ol className="list-decimal list-inside space-y-2 mt-2">
-                      <li>Acesse o <a href="https://console.cloud.google.com" target="_blank" className="text-blue-500 hover:underline">Google Cloud Console</a></li>
-                      <li>Crie um projeto (se ainda não tiver um)</li>
-                      <li>Habilite a API do Google Sheets</li>
-                      <li>Crie credenciais de conta de serviço</li>
-                      <li>Crie uma planilha no Google Sheets</li>
-                      <li>Compartilhe a planilha com o email da conta de serviço (com permissão de edição)</li>
-                      <li>Copie o ID da planilha da URL (a parte entre /d/ e /edit)</li>
-                    </ol>
+                    As credenciais do Google não estão configuradas corretamente.
+                    Você precisa configurar as variáveis de ambiente GOOGLE_CLIENT_EMAIL e GOOGLE_PRIVATE_KEY.
                   </AlertDescription>
                 </Alert>
+              )}
+              
+              {sheetsConfig && sheetsConfig.hasCredentials && sheetsConfig.isInitialized && (
+                <Alert variant="default" className="mb-4 bg-green-50 text-green-800 border-green-200">
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <AlertTitle>Integração ativa</AlertTitle>
+                  <AlertDescription>
+                    O Google Sheets está configurado e ativo.
+                    ID atual: <code className="bg-green-100 px-1 py-0.5 rounded">{sheetsConfig.spreadsheetId}</code>
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="spreadsheetId">ID da Planilha Google</Label>
+                  <Input
+                    id="spreadsheetId"
+                    placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+                    value={spreadsheetId}
+                    onChange={(e) => setSpreadsheetId(e.target.value)}
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Você pode encontrar o ID da planilha na URL do Google Sheets:
+                    <br />
+                    <code className="text-xs">https://docs.google.com/spreadsheets/d/[ID_DA_PLANILHA]/edit</code>
+                  </p>
+                </div>
                 
-                <Form {...sheetsForm}>
-                  <form onSubmit={sheetsForm.handleSubmit(onSubmitSheets)} className="space-y-4">
-                    <FormField
-                      control={sheetsForm.control}
-                      name="spreadsheetId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>ID da Planilha</FormLabel>
-                          <FormControl>
-                            <Input {...field} placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms" />
-                          </FormControl>
-                          <FormDescription>
-                            O ID da planilha do Google Sheets (encontrado na URL entre /d/ e /edit).
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={sheetsForm.control}
-                      name="sheetName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Nome da Aba</FormLabel>
-                          <FormControl>
-                            <Input {...field} placeholder="Contatos" />
-                          </FormControl>
-                          <FormDescription>
-                            O nome da aba onde os dados serão armazenados.
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <Button 
-                      type="submit" 
-                      disabled={sheetsStatus === 'loading'}
-                      className="w-full"
-                    >
-                      {sheetsStatus === 'loading' ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Configurando...
-                        </>
-                      ) : sheetsStatus === 'success' ? (
-                        'Configurado com Sucesso!'
-                      ) : (
-                        'Configurar Google Sheets'
-                      )}
-                    </Button>
-                  </form>
-                </Form>
+                <div className="space-y-2">
+                  <Label htmlFor="sheetName">Nome da Aba para Contatos (opcional)</Label>
+                  <Input
+                    id="sheetName"
+                    placeholder="Contatos"
+                    value={sheetName}
+                    onChange={(e) => setSheetName(e.target.value)}
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Se a aba não existir, ela será criada automaticamente.
+                    Se não informado, será usado o nome "Contatos".
+                  </p>
+                </div>
               </div>
             </CardContent>
+            <CardFooter className="flex justify-between">
+              <Button variant="outline" onClick={() => loadSheetsConfig()}>
+                Cancelar
+              </Button>
+              <Button 
+                onClick={initializeSheets} 
+                disabled={isSheetsLoading || !sheetsConfig?.hasCredentials}
+              >
+                {isSheetsLoading ? "Configurando..." : "Configurar Planilha"}
+              </Button>
+            </CardFooter>
           </Card>
         </TabsContent>
       </Tabs>

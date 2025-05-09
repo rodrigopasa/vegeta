@@ -285,7 +285,7 @@ class GoogleSheetsService {
       
       // Adicionar linha à planilha
       await this.sheets.spreadsheets.values.append({
-        spreadsheetId: this.spreadsheetId,
+        spreadsheetId: this._spreadsheetId,
         range: `${this.sheets_config.appointments_sheet.name}!A:I`,
         valueInputOption: 'RAW',
         insertDataOption: 'INSERT_ROWS',
