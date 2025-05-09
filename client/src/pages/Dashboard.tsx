@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { formatDate, getStatusColor, getFormattedStatus, getMessagePreview } from '@/lib/utils';
 import QRCodeModal from '@/components/QRCodeModal';
 import MessagePanel from '@/components/MessagePanel';
+import RateLimitSettings from '@/components/RateLimitSettings';
 
 const Dashboard: React.FC = () => {
   const { 
@@ -240,13 +241,18 @@ const Dashboard: React.FC = () => {
                 Agendar mensagem
               </Button>
               <Button
-                className="w-full bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg p-3 font-medium flex items-center justify-center"
+                className="w-full bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg p-3 font-medium flex items-center justify-center mb-3"
                 onClick={refreshContacts}
                 disabled={!isConnected}
               >
                 <i className="fas fa-sync-alt mr-2"></i>
                 Sincronizar contatos
               </Button>
+              
+              {/* Configurações de anti-bloqueio */}
+              <div className="mt-2">
+                <RateLimitSettings />
+              </div>
             </div>
           </div>
         </div>

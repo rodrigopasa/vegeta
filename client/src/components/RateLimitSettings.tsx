@@ -42,7 +42,7 @@ export const RateLimitSettings = () => {
   // Consultar as configurações atuais
   const { data: currentSettings, isLoading } = useQuery({
     queryKey: ['/api/whatsapp/status'],
-    select: (data) => data.rateLimitSettings || defaultSettings,
+    select: (data: any) => data?.rateLimitSettings || defaultSettings,
     enabled: open // Só busca quando o diálogo é aberto
   });
   
@@ -56,10 +56,13 @@ export const RateLimitSettings = () => {
   // Mutação para salvar as configurações
   const updateSettingsMutation = useMutation({
     mutationFn: async (newSettings: RateLimitSettings) => {
-      return apiRequest('/api/whatsapp/rate-limit', {
+      return await fetch('/api/whatsapp/rate-limit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newSettings)
+      }).then(res => {
+        if (!res.ok) throw new Error('Falha ao salvar configurações');
+        return res.json();
       });
     },
     onSuccess: () => {

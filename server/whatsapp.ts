@@ -58,7 +58,35 @@ class WhatsAppService implements WhatsAppManager {
             qrCode: this.qrCode
           }
         }));
+        
+        // Modo de desenvolvimento - sincronizar estado quando conectar
+        if (process.env.NODE_ENV === 'development' && process.env.REPL_ID && this.isConnected) {
+          // Em desenvolvimento, enviamos notificação de conectado
+          setTimeout(() => {
+            this.broadcastToClients({
+              type: 'READY',
+              payload: { isConnected: true }
+            });
+          }, 500);
+        }
       }
+      
+      // Handle disconnect
+      ws.on('close', () => {
+        log('WebSocket client disconnected', 'whatsapp');
+      });
+      
+      // Handle messages from clients
+      ws.on('message', (message) => {
+        try {
+          const data = JSON.parse(message.toString());
+          log(`WebSocket message received: ${JSON.stringify(data)}`, 'whatsapp');
+          
+          // Aqui podemos processar comandos do cliente se necessário
+        } catch (error) {
+          log(`Error processing WebSocket message: ${error}`, 'whatsapp');
+        }
+      });
     });
   }
 
@@ -130,6 +158,60 @@ class WhatsAppService implements WhatsAppManager {
     return { ...this.messagingRateLimit };
   }
   
+  // Função para simular o cliente WhatsApp em ambiente de desenvolvimento
+  private simulateClientForDevelopment() {
+    log('🔧 Iniciando simulação de cliente WhatsApp para desenvolvimento', 'whatsapp');
+    
+    // Simulando um cliente para desenvolvimento
+    this.client = {} as any;
+    this.isInitialized = true;
+    this.isConnected = true;
+    
+    // Simular contatos e grupos para testes
+    setTimeout(() => {
+      this.broadcastToClients({
+        type: 'READY',
+        payload: { isConnected: true }
+      });
+      
+      log('Simulação de cliente WhatsApp pronta', 'whatsapp');
+      
+      // Criar alguns contatos e grupos de teste para desenvolvimento
+      this.simulateContacts();
+    }, 1000);
+  }
+  
+  // Simular contatos e grupos para ambiente de desenvolvimento
+  private async simulateContacts() {
+    try {
+      // Verificar se já existem contatos no banco
+      const existingContacts = await dbStorage.getContacts();
+      
+      if (existingContacts.length === 0) {
+        log('Criando contatos simulados para desenvolvimento', 'whatsapp');
+        
+        // Criar alguns contatos de exemplo
+        const mockContacts = [
+          { name: 'Maria Silva', phoneNumber: '5511987654321', isGroup: false },
+          { name: 'João Oliveira', phoneNumber: '5511912345678', isGroup: false },
+          { name: 'Ana Costa', phoneNumber: '5511955443322', isGroup: false },
+          { name: 'Equipe de Marketing', phoneNumber: '551199887766', isGroup: true, memberCount: 5 },
+          { name: 'Grupo Familiar', phoneNumber: '551199776655', isGroup: true, memberCount: 8 }
+        ];
+        
+        for (const contact of mockContacts) {
+          await dbStorage.createContact(contact);
+        }
+        
+        log(`${mockContacts.length} contatos simulados criados com sucesso`, 'whatsapp');
+      } else {
+        log(`Usando ${existingContacts.length} contatos existentes no banco de dados`, 'whatsapp');
+      }
+    } catch (error) {
+      log(`Erro ao criar contatos simulados: ${error}`, 'whatsapp');
+    }
+  }
+
   async initializeClient(): Promise<void> {
     try {
       if (this.client) {
@@ -138,6 +220,16 @@ class WhatsAppService implements WhatsAppManager {
       }
 
       log('Initializing WhatsApp client', 'whatsapp');
+      
+      // Verificar se estamos em modo de desenvolvimento no Replit
+      // Se estivermos, usar um modo simulado para testes
+      if (process.env.NODE_ENV === 'development' && process.env.REPL_ID) {
+        log('🔧 Modo de desenvolvimento do Replit detectado. Usando cliente simulado para testes.', 'whatsapp');
+        
+        // Em vez de criar um cliente real, vamos simular o cliente para desenvolvimento
+        this.simulateClientForDevelopment();
+        return;
+      }
       
       // Configuração do puppeteer com múltiplas opções para compatibilidade
       const puppeteerOptions = {
@@ -153,23 +245,21 @@ class WhatsAppService implements WhatsAppManager {
         ]
       };
       
-      // Detectar se estamos em ambiente Replit ou produção
-      // e tentar usar um caminho de execução específico apenas se necessário
-      if (process.env.NODE_ENV === 'production') {
-        try {
-          // Em produção, tentar usar a localização específica do Chromium no Replit
-          const { execSync } = require('child_process');
-          const chromiumPath = execSync('which chromium-browser || which chromium || which chrome').toString().trim();
-          
-          if (chromiumPath) {
-            log(`Usando Chromium em: ${chromiumPath}`, 'whatsapp');
-            Object.assign(puppeteerOptions, { executablePath: chromiumPath });
-          }
-        } catch (error) {
-          log(`Não foi possível localizar Chromium, usando binário padrão: ${error}`, 'whatsapp');
+      // Para produção, tentar encontrar o Chromium instalado no sistema
+      try {
+        // Tentar usar a localização específica do Chromium
+        const { execSync } = require('child_process');
+        const chromiumPath = execSync('which chromium-browser || which chromium || which chrome').toString().trim();
+        
+        if (chromiumPath) {
+          log(`Usando Chromium em: ${chromiumPath}`, 'whatsapp');
+          Object.assign(puppeteerOptions, { executablePath: chromiumPath });
         }
+      } catch (error) {
+        log(`Não foi possível localizar Chromium, usando binário padrão: ${error}`, 'whatsapp');
       }
       
+      // Criação do cliente real
       this.client = new Client({
         puppeteer: puppeteerOptions
       });
@@ -454,6 +544,42 @@ class WhatsAppService implements WhatsAppManager {
     mediaCaption: string | null = null
   ): Promise<string> {
     try {
+      // Modo de desenvolvimento simulado
+      if (process.env.NODE_ENV === 'development' && process.env.REPL_ID) {
+        log(`🔧 [DEV] Simulando envio de mensagem para ${to}`, 'whatsapp');
+        
+        // Gerar um ID simulado para a mensagem
+        const simulatedMessageId = `simulated_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+        
+        // Simular um atraso real no envio
+        await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 500));
+        
+        // Notificar via WebSocket sobre o status simulado
+        setTimeout(() => {
+          this.broadcastToClients({
+            type: 'MESSAGE_STATUS_UPDATE',
+            payload: {
+              messageId: simulatedMessageId,
+              status: 'sent'
+            }
+          });
+          
+          // Depois de outro momento, simular entrega
+          setTimeout(() => {
+            this.broadcastToClients({
+              type: 'MESSAGE_STATUS_UPDATE',
+              payload: {
+                messageId: simulatedMessageId,
+                status: 'delivered'
+              }
+            });
+          }, 3000 + Math.random() * 2000);
+        }, 1000 + Math.random() * 1000);
+        
+        return simulatedMessageId;
+      }
+      
+      // Modo normal com WhatsApp real
       // Format phone number if needed
       const formattedNumber = to.includes('@g.us') ? to : to.replace(/\D/g, '');
       const chatId = to.includes('@g.us') ? to : `${formattedNumber}@c.us`;
@@ -501,6 +627,19 @@ class WhatsAppService implements WhatsAppManager {
   async refreshContacts(): Promise<void> {
     try {
       if (!this.client || !this.isConnected) {
+        return;
+      }
+
+      // Modo de desenvolvimento simulado
+      if (process.env.NODE_ENV === 'development' && process.env.REPL_ID) {
+        log('🔧 [DEV] Simulando atualização de contatos', 'whatsapp');
+        await this.simulateContacts();
+        
+        log('Contatos simulados atualizados com sucesso', 'whatsapp');
+        this.broadcastToClients({
+          type: 'CONTACTS_REFRESHED',
+          payload: { success: true }
+        });
         return;
       }
 
