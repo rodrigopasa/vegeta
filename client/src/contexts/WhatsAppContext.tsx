@@ -51,6 +51,7 @@ interface WhatsAppContextType {
   isConnected: boolean;
   isConnecting: boolean;
   qrCode: string | null;
+  activeInstance: WhatsAppInstance | null;
   contacts: Contact[];
   groups: Contact[];
   messages: Message[];
@@ -634,6 +635,9 @@ export const WhatsAppProvider: React.FC<WhatsAppProviderProps> = ({ children }) 
     ? messages.filter(message => message.status === 'scheduled' && message.instanceId === activeInstanceId)
     : [];
 
+  // Computed active instance
+  const activeInstance = instances.find(instance => instance.id === activeInstanceId) || null;
+  
   return (
     <WhatsAppContext.Provider value={{
       instances,
@@ -642,6 +646,7 @@ export const WhatsAppProvider: React.FC<WhatsAppProviderProps> = ({ children }) 
       isConnected,
       isConnecting,
       qrCode,
+      activeInstance,
       contacts: filteredContacts,
       groups,
       messages,
