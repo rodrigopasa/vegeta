@@ -385,6 +385,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: (error as Error).message });
     }
   });
+  
+  // Rotas para configurações de notificação
+  app.get("/api/whatsapp/notification-settings", (req: Request, res: Response) => {
+    try {
+      const settings = whatsAppService.getNotificationSettings();
+      res.json({
+        success: true,
+        settings
+      });
+    } catch (error) {
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
+  
+  app.post("/api/whatsapp/notification-settings", (req: Request, res: Response) => {
+    try {
+      const settings = req.body;
+      whatsAppService.setNotificationSettings(settings);
+      res.json({
+        success: true,
+        settings: whatsAppService.getNotificationSettings()
+      });
+    } catch (error) {
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
 
   app.get("/api/whatsapp/qr-code", (req: Request, res: Response) => {
     const qrCode = whatsAppService.getQRCode();

@@ -7,6 +7,7 @@ import { formatDate, getStatusColor, getFormattedStatus, getMessagePreview } fro
 import QRCodeModal from '@/components/QRCodeModal';
 import MessagePanel from '@/components/MessagePanel';
 import RateLimitSettings from '@/components/RateLimitSettings';
+import NotificationSettings from '@/components/NotificationSettings';
 
 const Dashboard: React.FC = () => {
   const { 
@@ -250,8 +251,13 @@ const Dashboard: React.FC = () => {
               </Button>
               
               {/* Configurações de anti-bloqueio */}
-              <div className="mt-2">
+              <div className="mt-2 mb-3">
                 <RateLimitSettings />
+              </div>
+              
+              {/* Configurações de notificação */}
+              <div className="mt-2">
+                <NotificationSettings />
               </div>
             </div>
           </div>
