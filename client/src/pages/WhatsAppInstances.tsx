@@ -53,12 +53,12 @@ const WhatsAppInstances: React.FC = () => {
         }
       };
       
-      const response = await fetch('/api/whatsapp/instances', options);
-      if (response.ok) {
-        const data = await response.json();
-        setInstances(data);
-        console.log('Lista de instâncias atualizada após criação:', data);
-      }
+      // Após criar a instância, nós apenas fechamos o diálogo e resetamos o formulário
+      // O recarregamento automático da página será feito através do redirecionamento
+      console.log('Instância criada com sucesso, redirecionando...');
+      
+      // Redirecionamos para a mesma página para forçar um recarregamento completo
+      window.location.href = window.location.href;
       
       resetForm();
       setIsCreateDialogOpen(false);
@@ -75,6 +75,10 @@ const WhatsAppInstances: React.FC = () => {
         description: formDescription || undefined,
         isActive: formIsActive
       });
+      
+      // Após atualizar, também recarregamos a página para garantir consistência
+      window.location.href = window.location.href;
+      
       resetForm();
       setIsEditDialogOpen(false);
       setEditingInstance(null);
