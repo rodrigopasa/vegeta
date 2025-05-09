@@ -151,10 +151,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Rota especial para forçar o registro de um administrador (funciona mesmo se já existirem usuários)
+  app.post("/api/force-register-admin", async (req: Request, res: Response) => {
+    try {
+      // Validar dados do usuário
+      const userData = insertUserSchema.parse(req.body);
+      
+      // Hash da senha antes de salvar
+      const hashedPassword = await hashPassword(userData.password);
+      
+      // Cria o usuário admin
+      const user = await dbStorage.createUser({
+        ...userData,
+        password: hashedPassword
+      });
+      
+      return res.status(201).json({ 
+        id: user.id,
+        username: user.username,
+        message: "Administrador criado com sucesso!"
+      });
+    } catch (error) {
+      console.error("Erro ao criar administrador:", error);
+      if (error instanceof ZodError) {
+        const validationError = fromZodError(error);
+        return res.status(400).json({ error: validationError.message });
+      }
+      return res.status(500).json({ error: (error as Error).message });
+    }
+  });
+  
   // Definir as rotas públicas da API
   const publicApiRoutes = [
     '/api/login', 
     '/api/register', 
+    '/api/force-register-admin', 
     '/api/users/count',
     '/api/user',
     '/api/reset-password'
