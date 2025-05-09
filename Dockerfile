@@ -64,12 +64,28 @@ COPY . .
 # Configurar variáveis de ambiente para o Puppeteer
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+ENV USE_SIMULATED_CLIENT=true
 
-# Aplicar migrações do banco de dados
-RUN npm run db:push
+# Instalar utilitário wait-for-it para aguardar disponibilidade do banco
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    wait-for-it \
+    && rm -rf /var/lib/apt/lists/*
+
+# Criar script de inicialização para garantir que as migrações sejam aplicadas antes de iniciar o servidor
+COPY ./docker-entrypoint.sh /
+RUN chmod +x /docker-entrypoint.sh
+
+# Construir a aplicação para produção
+RUN npm run build
 
 # Expor a porta 5000
 EXPOSE 5000
 
-# Iniciar o servidor
-CMD ["npm", "run", "dev"]
+# Configurar ambiente de produção
+ENV NODE_ENV=production
+
+# Usar o script de entrada para garantir que o banco esteja pronto e migrações aplicadas antes de iniciar
+ENTRYPOINT ["/docker-entrypoint.sh"]
+
+# Iniciar o servidor em modo de produção
+CMD ["npm", "run", "start"]

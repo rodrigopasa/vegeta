@@ -9,11 +9,18 @@ services:
       - "5000:5000"
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_URL=postgres://${PGUSER}:${PGPASSWORD}@postgres:5432/${PGDATABASE}
+      - PGHOST=postgres
+      - PGPORT=5432
+      - PGUSER=${PGUSER}
+      - PGPASSWORD=${PGPASSWORD}
+      - PGDATABASE=${PGDATABASE}
       - PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
       - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+      - USE_SIMULATED_CLIENT=true
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     networks:
       - whatsapp-network
 
