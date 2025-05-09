@@ -104,11 +104,48 @@ class WhatsAppChatbotService {
       log(`Processando mensagem de ${contact.name || from}: ${messageContent}`, 'whatsapp-chatbot');
       
       // Processar a mensagem com o chatbot
-      const chatbotResponse = await chatbotService.processMessage({
-        message: messageContent,
-        phoneNumber: from,
-        name: contact.name
-      });
+      let chatbotResponse;
+      
+      try {
+        chatbotResponse = await chatbotService.processMessage({
+          message: messageContent,
+          phoneNumber: from,
+          name: contact.name
+        });
+      } catch (chatbotError) {
+        // Se ocorrer erro no chatbot (como OpenAI não configurada), usar respostas padrão
+        log(`Usando resposta padrão devido ao erro: ${chatbotError}`, 'whatsapp-chatbot');
+        
+        // Respostas genéricas para quando a IA não estiver disponível
+        const defaultResponses = [
+          `Olá ${contact.name || 'Cliente'}! Agradecemos seu contato. Neste momento, estou operando em modo básico e não consigo processar consultas avançadas.`,
+          `Posso ajudar com informações simples sobre nossos serviços e horários. Para questões mais complexas, por favor, aguarde um atendente humano entrar em contato.`,
+          `Nosso horário de funcionamento é de segunda a sexta, das 9h às 18h.`,
+          `Para agendar um horário, por favor entre em contato pelo telefone principal da empresa.`,
+          `Obrigado por sua mensagem. Um de nossos atendentes entrará em contato em breve!`
+        ];
+        
+        // Selecionar uma resposta que tenha alguma relação com a pergunta, ou uma aleatória
+        let selectedResponse = defaultResponses[0];
+        
+        const lowerMessage = messageContent.toLowerCase();
+        if (lowerMessage.includes('horário') || lowerMessage.includes('aberto')) {
+          selectedResponse = defaultResponses[2];
+        } else if (lowerMessage.includes('agendar') || lowerMessage.includes('marcar')) {
+          selectedResponse = defaultResponses[3];
+        } else if (lowerMessage.includes('ajuda') || lowerMessage.includes('problema')) {
+          selectedResponse = defaultResponses[1];
+        } else {
+          // Resposta padrão para mensagens que não correspondem a nenhum padrão
+          selectedResponse = defaultResponses[4];
+        }
+        
+        // Criar um objeto de resposta simples para manter a interface consistente
+        chatbotResponse = {
+          message: selectedResponse,
+          sessionId: 'dev-session'
+        };
+      }
       
       // Enviar resposta
       await this.sendResponse(from, chatbotResponse.message);

@@ -244,64 +244,13 @@ class WhatsAppService implements WhatsAppManager {
   private setupSimulatedMessageReceiver() {
     if (!this.client || process.env.NODE_ENV !== 'development') return;
     
-    // Adicionar rota para simular recebimento de mensagens
-    import('express').then(({ Router }) => {
-      const router = Router();
-      const app = require('./routes').getExpressApp();
-      
-      if (!app) {
-        log('Não foi possível obter instância do Express para configurar simulação', 'whatsapp');
-        return;
-      }
-      
-      // Rota para receber mensagens simuladas
-      router.post('/api/whatsapp/simulate/message', async (req, res) => {
-        try {
-          const { from, body } = req.body;
-          
-          if (!from || !body) {
-            return res.status(400).json({ error: 'Necessário fornecer from e body' });
-          }
-          
-          // Buscar contato para obter informações
-          const contact = await dbStorage.getContactByPhone(from);
-          
-          // Criar objeto de mensagem simulada
-          const simulatedMessage = {
-            from,
-            body,
-            isGroup: contact?.isGroup || false,
-            _data: {
-              notifyName: contact?.name || 'Desconhecido'
-            },
-            getChat: () => ({ isGroup: contact?.isGroup || false }),
-            getContact: () => ({ name: contact?.name || 'Desconhecido' })
-          };
-          
-          // Emitir evento de mensagem recebida
-          log(`Simulando mensagem recebida de ${from}: ${body}`, 'whatsapp');
-          this.client.emit('message', simulatedMessage);
-          
-          return res.json({ success: true, message: 'Mensagem simulada enviada com sucesso' });
-        } catch (error) {
-          log(`Erro ao simular mensagem: ${error}`, 'whatsapp');
-          return res.status(500).json({ error: `Erro ao simular mensagem: ${error}` });
-        }
-      });
-      
-      // Adicionar router ao app Express
-      app.use(router);
-      log('Simulador de recebimento de mensagens configurado', 'whatsapp');
-      
-      // Fazer algumas chamadas simuladas em intervalos
-      if (process.env.AUTO_SIMULATE_MESSAGES === 'true') {
-        setTimeout(() => {
-          this.simulateIncomingMessage();
-        }, 10000);
-      }
-    }).catch(error => {
-      log(`Erro ao configurar simulador de mensagens: ${error}`, 'whatsapp');
-    });
+    // Vamos simular uma mensagem inicial sem depender de rotas adicionais
+    setTimeout(() => {
+      this.simulateIncomingMessage();
+    }, 5000);
+    
+    // Registrar rota manualmente via API em routes.ts
+    log('Simulador de recebimento de mensagens configurado', 'whatsapp');
   }
   
   // Simular mensagem recebida automaticamente
