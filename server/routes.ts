@@ -12,6 +12,11 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 
+// Importar os serviços para chatbot, Google Sheets e Google Calendar
+import { chatbotService } from "./services/chatbot-service";
+import { googleSheetsService } from "./services/google-sheets-service";
+import { googleCalendarService } from "./services/google-calendar-service";
+
 // Configurar o armazenamento de arquivos com Multer
 const uploadStorage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -633,6 +638,286 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     } catch (error) {
       res.status(500).json({ message: (error as Error).message });
+    }
+  });
+
+  // === Rotas para Chatbot Inteligente ===
+  
+  // Processar mensagem do chatbot
+  app.post("/api/chatbot/message", async (req: Request, res: Response) => {
+    try {
+      const { message, phoneNumber, name } = req.body;
+      
+      if (!message || !phoneNumber) {
+        return res.status(400).json({ error: 'Mensagem e número de telefone são obrigatórios' });
+      }
+      
+      const response = await chatbotService.processMessage({
+        message,
+        phoneNumber,
+        name
+      });
+      
+      res.json(response);
+    } catch (error) {
+      console.error('Erro ao processar mensagem do chatbot:', error);
+      res.status(500).json({ 
+        error: 'Erro ao processar mensagem do chatbot', 
+        details: (error as Error).message 
+      });
+    }
+  });
+  
+  // === Rotas para Google Sheets (CRM) ===
+  
+  // Inicializar conexão com Google Sheets
+  app.post("/api/sheets/initialize", async (req: Request, res: Response) => {
+    try {
+      // Verificar se as credenciais Google estão configuradas
+      const clientEmail = process.env.GOOGLE_CLIENT_EMAIL;
+      const privateKey = process.env.GOOGLE_PRIVATE_KEY;
+      const sheetId = process.env.GOOGLE_SHEET_ID;
+      
+      if (!clientEmail || !privateKey || !sheetId) {
+        return res.status(400).json({ 
+          error: 'Credenciais do Google não configuradas', 
+          requiredCredentials: ['GOOGLE_CLIENT_EMAIL', 'GOOGLE_PRIVATE_KEY', 'GOOGLE_SHEET_ID'] 
+        });
+      }
+      
+      const success = await googleSheetsService.initialize();
+      
+      if (success) {
+        res.json({ success: true, message: 'Conexão com Google Sheets inicializada com sucesso' });
+      } else {
+        res.status(500).json({ error: 'Falha ao inicializar conexão com Google Sheets' });
+      }
+    } catch (error) {
+      console.error('Erro ao inicializar Google Sheets:', error);
+      res.status(500).json({ 
+        error: 'Erro ao inicializar Google Sheets', 
+        details: (error as Error).message 
+      });
+    }
+  });
+  
+  // Adicionar contato ao Google Sheets
+  app.post("/api/sheets/contacts", async (req: Request, res: Response) => {
+    try {
+      const { name, phoneNumber, email, notes } = req.body;
+      
+      if (!name || !phoneNumber) {
+        return res.status(400).json({ error: 'Nome e número de telefone são obrigatórios' });
+      }
+      
+      const contactId = await googleSheetsService.addContact({
+        name,
+        phoneNumber,
+        email,
+        notes,
+        createdAt: new Date()
+      });
+      
+      if (contactId) {
+        res.json({ success: true, contactId });
+      } else {
+        res.status(500).json({ error: 'Falha ao adicionar contato ao Google Sheets' });
+      }
+    } catch (error) {
+      console.error('Erro ao adicionar contato ao Google Sheets:', error);
+      res.status(500).json({ 
+        error: 'Erro ao adicionar contato ao Google Sheets', 
+        details: (error as Error).message 
+      });
+    }
+  });
+  
+  // === Rotas para Google Calendar (Agendamentos) ===
+  
+  // Inicializar conexão com Google Calendar
+  app.post("/api/calendar/initialize", async (req: Request, res: Response) => {
+    try {
+      // Verificar se as credenciais Google estão configuradas
+      const clientEmail = process.env.GOOGLE_CLIENT_EMAIL;
+      const privateKey = process.env.GOOGLE_PRIVATE_KEY;
+      const calendarId = process.env.GOOGLE_CALENDAR_ID;
+      
+      if (!clientEmail || !privateKey || !calendarId) {
+        return res.status(400).json({ 
+          error: 'Credenciais do Google não configuradas', 
+          requiredCredentials: ['GOOGLE_CLIENT_EMAIL', 'GOOGLE_PRIVATE_KEY', 'GOOGLE_CALENDAR_ID'] 
+        });
+      }
+      
+      const success = await googleCalendarService.initialize();
+      
+      if (success) {
+        res.json({ success: true, message: 'Conexão com Google Calendar inicializada com sucesso' });
+      } else {
+        res.status(500).json({ error: 'Falha ao inicializar conexão com Google Calendar' });
+      }
+    } catch (error) {
+      console.error('Erro ao inicializar Google Calendar:', error);
+      res.status(500).json({ 
+        error: 'Erro ao inicializar Google Calendar', 
+        details: (error as Error).message 
+      });
+    }
+  });
+  
+  // Verificar disponibilidade de horário
+  app.post("/api/calendar/check-availability", async (req: Request, res: Response) => {
+    try {
+      const { startTime, endTime } = req.body;
+      
+      if (!startTime || !endTime) {
+        return res.status(400).json({ error: 'Horário de início e término são obrigatórios' });
+      }
+      
+      const start = new Date(startTime);
+      const end = new Date(endTime);
+      
+      const isAvailable = await googleCalendarService.checkAvailability(start, end);
+      
+      res.json({ available: isAvailable });
+    } catch (error) {
+      console.error('Erro ao verificar disponibilidade:', error);
+      res.status(500).json({ 
+        error: 'Erro ao verificar disponibilidade', 
+        details: (error as Error).message 
+      });
+    }
+  });
+  
+  // Criar um novo agendamento
+  app.post("/api/calendar/appointments", async (req: Request, res: Response) => {
+    try {
+      const { 
+        summary, 
+        description, 
+        location, 
+        startTime, 
+        endTime, 
+        attendeeEmail, 
+        attendeeName, 
+        attendeePhone,
+        contactId 
+      } = req.body;
+      
+      if (!summary || !startTime || !endTime) {
+        return res.status(400).json({ error: 'Título, horário de início e término são obrigatórios' });
+      }
+      
+      const start = new Date(startTime);
+      const end = new Date(endTime);
+      
+      // Primeiro criar no Google Calendar
+      const googleEventId = await googleCalendarService.createAppointment({
+        summary,
+        description,
+        location,
+        startTime: start,
+        endTime: end,
+        attendeeEmail,
+        attendeeName,
+        attendeePhone
+      });
+      
+      if (!googleEventId) {
+        return res.status(500).json({ error: 'Falha ao criar evento no Google Calendar' });
+      }
+      
+      // Depois salvar no banco de dados
+      if (contactId) {
+        const insertAppointment = {
+          contactId: parseInt(contactId),
+          title: summary,
+          description,
+          startTime: start,
+          endTime: end,
+          googleEventId,
+          status: 'scheduled'
+        };
+        
+        const appointment = await dbStorage.createAppointment(insertAppointment);
+        
+        res.json({ 
+          success: true, 
+          appointmentId: appointment.id,
+          googleEventId 
+        });
+      } else {
+        res.json({ 
+          success: true, 
+          googleEventId 
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao criar agendamento:', error);
+      res.status(500).json({ 
+        error: 'Erro ao criar agendamento', 
+        details: (error as Error).message 
+      });
+    }
+  });
+  
+  // Obter agendamentos por período
+  app.get("/api/calendar/appointments", async (req: Request, res: Response) => {
+    try {
+      const { startDate, endDate } = req.query;
+      
+      if (!startDate || !endDate) {
+        return res.status(400).json({ error: 'Data de início e término são obrigatórias' });
+      }
+      
+      const start = new Date(startDate as string);
+      const end = new Date(endDate as string);
+      
+      // Buscar no banco de dados
+      const appointments = await dbStorage.getAppointmentsByDateRange(start, end);
+      
+      res.json(appointments);
+    } catch (error) {
+      console.error('Erro ao buscar agendamentos:', error);
+      res.status(500).json({ 
+        error: 'Erro ao buscar agendamentos', 
+        details: (error as Error).message 
+      });
+    }
+  });
+  
+  // Cancelar agendamento
+  app.delete("/api/calendar/appointments/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: 'ID inválido' });
+      }
+      
+      // Buscar agendamento no banco de dados
+      const appointment = await dbStorage.getAppointment(id);
+      if (!appointment) {
+        return res.status(404).json({ error: 'Agendamento não encontrado' });
+      }
+      
+      // Cancelar no Google Calendar se tiver ID do evento
+      if (appointment.googleEventId) {
+        await googleCalendarService.cancelAppointment(appointment.googleEventId);
+      }
+      
+      // Remover do banco de dados
+      const success = await dbStorage.deleteAppointment(id);
+      if (!success) {
+        return res.status(500).json({ error: 'Falha ao remover agendamento do banco de dados' });
+      }
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Erro ao cancelar agendamento:', error);
+      res.status(500).json({ 
+        error: 'Erro ao cancelar agendamento', 
+        details: (error as Error).message 
+      });
     }
   });
 
