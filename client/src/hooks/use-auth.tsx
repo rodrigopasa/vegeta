@@ -58,7 +58,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
       console.log("Tentando login com:", credentials);
-      return await apiRequest<User>("POST", "/api/login", credentials);
+      const res = await apiRequest("POST", "/api/login", credentials);
+      
+      if (!res.ok) {
+        console.error("Login falhou com status:", res.status);
+        const errorText = await res.text();
+        console.error("Resposta do erro:", errorText);
+        throw new Error(errorText || "Credenciais inválidas");
+      }
+      
+      const userData = await res.json();
+      console.log("Login bem-sucedido, dados do usuário:", userData);
+      return userData;
     },
     onSuccess: (user: User) => {
       queryClient.setQueryData(["/api/user"], user);
@@ -78,7 +89,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const registerMutation = useMutation({
     mutationFn: async (userData: RegisterData) => {
-      return await apiRequest<User>("POST", "/api/register", userData);
+      const res = await apiRequest("POST", "/api/register", userData);
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Falha ao registrar usuário");
+      }
+      return await res.json();
     },
     onSuccess: (user: User) => {
       queryClient.setQueryData(["/api/user"], user);
@@ -98,7 +114,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      await apiRequest("POST", "/api/logout");
+      const res = await apiRequest("POST", "/api/logout");
+      if (!res.ok) {
+        throw new Error("Falha ao realizar logout");
+      }
     },
     onSuccess: () => {
       queryClient.setQueryData(["/api/user"], null);

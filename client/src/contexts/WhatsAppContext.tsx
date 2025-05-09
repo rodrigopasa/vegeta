@@ -2,27 +2,12 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 
-interface WhatsAppInstance {
-  id: number;
-  name: string;
-  phoneNumber: string;
-  description: string | null;
-  isActive: boolean;
-  createdAt: Date;
-  lastConnectedAt: Date | null;
-  isConnected?: boolean;
-  isInitialized?: boolean;
-  qrCode?: string | null;
-  isConnecting?: boolean; // Campo adicional para uso na interface, não persiste no banco
-}
-
 interface Contact {
   id: number;
   name: string;
   phoneNumber: string;
   isGroup: boolean;
   memberCount: number | null;
-  instanceId: number;
 }
 
 interface Message {
@@ -41,43 +26,25 @@ interface Message {
   mediaPath?: string;
   mediaName?: string;
   mediaCaption?: string;
-  instanceId: number;
 }
 
 interface WhatsAppContextType {
-  instances: WhatsAppInstance[];
-  setInstances: React.Dispatch<React.SetStateAction<WhatsAppInstance[]>>;
-  activeInstanceId: number | null;
-  setActiveInstanceId: (id: number | null) => void;
   isConnected: boolean;
   isConnecting: boolean;
   qrCode: string | null;
-  activeInstance: WhatsAppInstance | null;
   contacts: Contact[];
   groups: Contact[];
   messages: Message[];
   scheduledMessages: Message[];
-  
-  initializeWhatsApp: (instanceId: number) => Promise<void>;
-  refreshContacts: (instanceId: number) => Promise<void>;
-  
-  getInstanceContacts: (instanceId: number) => Contact[];
-  getInstanceGroups: (instanceId: number) => Contact[];
-  getInstanceMessages: (instanceId: number) => Message[];
-  getInstanceScheduledMessages: (instanceId: number) => Message[];
-  
-  createInstance: (name: string, phoneNumber: string, description?: string) => Promise<WhatsAppInstance>;
-  updateInstance: (id: number, data: Partial<WhatsAppInstance>) => Promise<WhatsAppInstance>;
-  deleteInstance: (id: number) => Promise<boolean>;
-  
-  sendMessage: (instanceId: number, recipient: string, content: string, scheduledFor?: Date, recipientName?: string, isGroup?: boolean, mediaOptions?: {
+  initializeWhatsApp: () => Promise<void>;
+  refreshContacts: () => Promise<void>;
+  sendMessage: (recipient: string, content: string, scheduledFor?: Date, recipientName?: string, isGroup?: boolean, mediaOptions?: {
     hasMedia: boolean;
     mediaType: string;
     mediaPath: string;
     mediaName: string;
     mediaCaption?: string;
   }) => Promise<Message>;
-  
   deleteMessage: (id: number) => Promise<boolean>;
 }
 
@@ -90,16 +57,11 @@ interface WhatsAppProviderProps {
 }
 
 export const WhatsAppProvider: React.FC<WhatsAppProviderProps> = ({ children }) => {
-  const [instances, setInstances] = useState<WhatsAppInstance[]>([]);
-  const [activeInstanceId, setActiveInstanceId] = useState<number | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
-  // Estado para rastrear quais instâncias estão em processo de conexão
-  const [connectingInstances, setConnectingInstances] = useState<Record<number, boolean>>({});
-  
   const [webSocket, setWebSocket] = useState<WebSocket | null>(null);
   const { toast } = useToast();
 
@@ -107,8 +69,10 @@ export const WhatsAppProvider: React.FC<WhatsAppProviderProps> = ({ children }) 
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
-        // Fetch WhatsApp instances
-        await fetchInstances();
+        // Check WhatsApp connection status
+        const statusRes = await fetch('/api/whatsapp/status');
+        const statusData = await statusRes.json();
+        setIsConnected(statusData.isConnected);
         
         // Fetch contacts
         await fetchContacts();
@@ -130,13 +94,6 @@ export const WhatsAppProvider: React.FC<WhatsAppProviderProps> = ({ children }) 
     };
   }, []);
 
-  // Set first instance as active if no active instance
-  useEffect(() => {
-    if (instances.length > 0 && activeInstanceId === null) {
-      setActiveInstanceId(instances[0].id);
-    }
-  }, [instances, activeInstanceId]);
-
   const setupWebSocket = useCallback(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}/ws`;
@@ -152,131 +109,64 @@ export const WhatsAppProvider: React.FC<WhatsAppProviderProps> = ({ children }) 
         const data = JSON.parse(event.data);
         console.log('WebSocket message:', data);
         
-        const instanceId = data.payload?.instanceId;
-        
         switch (data.type) {
           case 'CONNECTION_STATE':
-            if (instanceId) {
-              updateInstanceStatus(instanceId, {
-                isConnected: data.payload.isConnected,
-                qrCode: data.payload.qrCode || null
-              });
-              
-              // Update active instance connection status if this is the active instance
-              if (instanceId === activeInstanceId) {
-                setIsConnected(data.payload.isConnected);
-                if (data.payload.qrCode) {
-                  setQrCode(data.payload.qrCode);
-                }
-              }
+            setIsConnected(data.payload.isConnected);
+            if (data.payload.qrCode) {
+              setQrCode(data.payload.qrCode);
             }
             break;
             
           case 'QR_CODE':
-            if (instanceId) {
-              // Atualizamos apenas os campos que existem no schema
-              updateInstanceStatus(instanceId, {
-                qrCode: data.payload.qrCode
-              });
-              
-              // Tratamos o estado de conectando no contexto local apenas
-              setConnectingInstances(prev => ({ ...prev, [instanceId]: true }));
-              
-              // Update active QR code if this is the active instance
-              if (instanceId === activeInstanceId) {
-                setQrCode(data.payload.qrCode);
-                setIsConnecting(true);
-              }
-            }
+            setQrCode(data.payload);
+            setIsConnecting(true);
             break;
             
           case 'AUTHENTICATED':
-            if (instanceId) {
-              updateInstanceStatus(instanceId, {
-                isInitialized: true
-              });
-              
-              toast({
-                title: 'Autenticado!',
-                description: `WhatsApp #${instanceId} foi autenticado com sucesso.`,
-              });
-            }
+            toast({
+              title: 'Autenticado!',
+              description: 'Seu WhatsApp foi autenticado com sucesso.',
+            });
             break;
             
           case 'READY':
-            if (instanceId) {
-              updateInstanceStatus(instanceId, {
-                isConnected: true,
-                isInitialized: true,
-                qrCode: null
-              });
-              
-              // Update active instance status if this is the active instance
-              if (instanceId === activeInstanceId) {
-                setIsConnected(true);
-                setIsConnecting(false);
-                setQrCode(null);
-              }
-              
-              toast({
-                title: 'Conectado!',
-                description: `WhatsApp #${instanceId} está conectado e pronto para uso.`,
-              });
-              
-              // Refresh data on connection
-              fetchContacts();
-              fetchMessages();
-            }
+            setIsConnected(true);
+            setIsConnecting(false);
+            setQrCode(null);
+            toast({
+              title: 'Conectado!',
+              description: 'Seu WhatsApp está conectado e pronto para uso.',
+            });
+            // Refresh data on connection
+            fetchContacts();
+            fetchMessages();
             break;
             
           case 'DISCONNECTED':
-            if (instanceId) {
-              updateInstanceStatus(instanceId, {
-                isConnected: false
-              });
-              
-              // Update active instance status if this is the active instance
-              if (instanceId === activeInstanceId) {
-                setIsConnected(false);
-              }
-              
-              toast({
-                title: 'Desconectado',
-                description: `WhatsApp #${instanceId} foi desconectado: ${data.payload.reason}`,
-                variant: 'destructive',
-              });
-            }
+            setIsConnected(false);
+            toast({
+              title: 'Desconectado',
+              description: `Seu WhatsApp foi desconectado: ${data.payload.reason}`,
+              variant: 'destructive',
+            });
             break;
             
           case 'AUTH_FAILURE':
-            if (instanceId) {
-              updateInstanceStatus(instanceId, {
-                isConnected: false,
-                isInitialized: false
-              });
-              
-              // Update active instance status if this is the active instance
-              if (instanceId === activeInstanceId) {
-                setIsConnected(false);
-                setIsConnecting(false);
-              }
-              
-              toast({
-                title: 'Falha na autenticação',
-                description: `WhatsApp #${instanceId}: ${data.payload.message}`,
-                variant: 'destructive',
-              });
-            }
+            setIsConnected(false);
+            setIsConnecting(false);
+            toast({
+              title: 'Falha na autenticação',
+              description: data.payload.message,
+              variant: 'destructive',
+            });
             break;
             
           case 'CONTACTS_REFRESHED':
-            if (instanceId) {
-              toast({
-                title: 'Contatos atualizados',
-                description: `Contatos do WhatsApp #${instanceId} foram atualizados.`,
-              });
-              fetchContacts();
-            }
+            toast({
+              title: 'Contatos atualizados',
+              description: 'Sua lista de contatos foi atualizada com sucesso.',
+            });
+            fetchContacts();
             break;
             
           case 'MESSAGE_SENT':
@@ -330,45 +220,7 @@ export const WhatsAppProvider: React.FC<WhatsAppProviderProps> = ({ children }) 
     };
     
     setWebSocket(ws);
-  }, [toast, activeInstanceId]);
-
-  // Helper to update instance status in the instances array
-  const updateInstanceStatus = (instanceId: number, updates: Partial<WhatsAppInstance>) => {
-    setInstances(prevInstances => 
-      prevInstances.map(instance => 
-        instance.id === instanceId 
-          ? { ...instance, ...updates } 
-          : instance
-      )
-    );
-  };
-
-  const fetchInstances = async () => {
-    try {
-      const response = await fetch('/api/whatsapp/instances');
-      const data: WhatsAppInstance[] = await response.json();
-      setInstances(data);
-      
-      // Update connection status for each instance
-      for (const instance of data) {
-        const statusRes = await fetch(`/api/whatsapp/status?instanceId=${instance.id}`);
-        const statusData = await statusRes.json();
-        updateInstanceStatus(instance.id, { 
-          isConnected: statusData.isConnected,
-          qrCode: statusData.qrCode,
-          isInitialized: statusData.isInitialized
-        });
-        
-        // Set active instance connection status if this is the active instance
-        if (activeInstanceId === instance.id) {
-          setIsConnected(statusData.isConnected);
-          setQrCode(statusData.qrCode);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching instances:', error);
-    }
-  };
+  }, [toast]);
 
   const fetchContacts = async () => {
     try {
@@ -390,160 +242,35 @@ export const WhatsAppProvider: React.FC<WhatsAppProviderProps> = ({ children }) 
     }
   };
 
-  const initializeWhatsApp = async (instanceId: number) => {
+  const initializeWhatsApp = async () => {
     try {
-      // Atualizamos o estado de conexão para a instância ativa
-      if (instanceId === activeInstanceId) {
-        setIsConnecting(true);
-      }
-      
-      // Atualizamos o estado local e na lista de instâncias
-      setConnectingInstances(prev => ({ ...prev, [instanceId]: true }));
-      updateInstanceStatus(instanceId, { isConnecting: true });
-      
-      await apiRequest('POST', '/api/whatsapp/initialize', { instanceId });
+      setIsConnecting(true);
+      await apiRequest('POST', '/api/whatsapp/initialize');
     } catch (error) {
-      console.error(`Error initializing WhatsApp #${instanceId}:`, error);
+      console.error('Error initializing WhatsApp:', error);
       toast({
         title: 'Erro de conexão',
-        description: `Não foi possível inicializar o WhatsApp #${instanceId}.`,
+        description: 'Não foi possível inicializar o WhatsApp.',
         variant: 'destructive',
       });
-      
-      // Limpar estado de conexão
-      if (instanceId === activeInstanceId) {
-        setIsConnecting(false);
-      }
-      
-      // Limpar estado de conectando no contexto local e na lista
-      setConnectingInstances(prev => ({ ...prev, [instanceId]: false }));
-      updateInstanceStatus(instanceId, { isConnecting: false });
+      setIsConnecting(false);
     }
   };
 
-  const refreshContacts = async (instanceId: number) => {
+  const refreshContacts = async () => {
     try {
-      await apiRequest('POST', '/api/whatsapp/refresh-contacts', { instanceId });
+      await apiRequest('POST', '/api/whatsapp/refresh-contacts');
     } catch (error) {
-      console.error(`Error refreshing contacts for instance #${instanceId}:`, error);
+      console.error('Error refreshing contacts:', error);
       toast({
         title: 'Erro de sincronização',
-        description: `Não foi possível sincronizar os contatos do WhatsApp #${instanceId}.`,
+        description: 'Não foi possível sincronizar os contatos.',
         variant: 'destructive',
       });
-    }
-  };
-
-  const createInstance = async (
-    name: string, 
-    phoneNumber: string, 
-    description?: string
-  ): Promise<WhatsAppInstance> => {
-    try {
-      const response = await apiRequest<WhatsAppInstance>('POST', '/api/whatsapp/instances', {
-        name,
-        phoneNumber,
-        description
-      });
-      
-      // Adicionar diretamente a nova instância à lista
-      // Esta é uma abordagem mais confiável do que esperar um recarregamento
-      setInstances(prev => [...prev, response]);
-      
-      // Além disso, vamos tentar atualizar a lista completa
-      try {
-        await fetchInstances();
-      } catch (fetchError) {
-        console.error('Erro ao atualizar lista de instâncias após criar:', fetchError);
-        // Mesmo com erro no fetch, já adicionamos a instância à lista acima
-      }
-      
-      toast({
-        title: 'Instância criada',
-        description: `Nova instância WhatsApp "${name}" foi criada com sucesso.`,
-      });
-      
-      return response;
-    } catch (error) {
-      console.error('Error creating WhatsApp instance:', error);
-      toast({
-        title: 'Erro ao criar instância',
-        description: (error as Error).message,
-        variant: 'destructive',
-      });
-      throw error;
-    }
-  };
-
-  const updateInstance = async (
-    id: number, 
-    data: Partial<WhatsAppInstance>
-  ): Promise<WhatsAppInstance> => {
-    try {
-      const response = await apiRequest<WhatsAppInstance>('PATCH', `/api/whatsapp/instances/${id}`, data);
-      
-      // Update instances list
-      setInstances(prevInstances => 
-        prevInstances.map(instance => 
-          instance.id === id 
-            ? { ...instance, ...data } 
-            : instance
-        )
-      );
-      
-      toast({
-        title: 'Instância atualizada',
-        description: `Instância WhatsApp #${id} foi atualizada com sucesso.`,
-      });
-      
-      return response;
-    } catch (error) {
-      console.error(`Error updating WhatsApp instance #${id}:`, error);
-      toast({
-        title: 'Erro ao atualizar instância',
-        description: (error as Error).message,
-        variant: 'destructive',
-      });
-      throw error;
-    }
-  };
-
-  const deleteInstance = async (id: number): Promise<boolean> => {
-    try {
-      await apiRequest('DELETE', `/api/whatsapp/instances/${id}`);
-      
-      // Update instances list
-      setInstances(prevInstances => prevInstances.filter(instance => instance.id !== id));
-      
-      // If active instance was deleted, set first available instance as active
-      if (activeInstanceId === id) {
-        const remainingInstances = instances.filter(instance => instance.id !== id);
-        if (remainingInstances.length > 0) {
-          setActiveInstanceId(remainingInstances[0].id);
-        } else {
-          setActiveInstanceId(null);
-        }
-      }
-      
-      toast({
-        title: 'Instância removida',
-        description: `Instância WhatsApp #${id} foi removida com sucesso.`,
-      });
-      
-      return true;
-    } catch (error) {
-      console.error(`Error deleting WhatsApp instance #${id}:`, error);
-      toast({
-        title: 'Erro ao remover instância',
-        description: (error as Error).message,
-        variant: 'destructive',
-      });
-      return false;
     }
   };
 
   const sendMessage = async (
-    instanceId: number,
     recipient: string, 
     content: string, 
     scheduledFor?: Date, 
@@ -559,7 +286,6 @@ export const WhatsAppProvider: React.FC<WhatsAppProviderProps> = ({ children }) 
   ): Promise<Message> => {
     try {
       const response = await apiRequest<Message>('POST', '/api/messages', {
-        instanceId,
         recipient,
         content,
         scheduledFor,
@@ -579,7 +305,7 @@ export const WhatsAppProvider: React.FC<WhatsAppProviderProps> = ({ children }) 
       
       return response;
     } catch (error) {
-      console.error(`Error sending message from instance #${instanceId}:`, error);
+      console.error('Error sending message:', error);
       toast({
         title: 'Erro ao enviar mensagem',
         description: (error as Error).message,
@@ -613,64 +339,20 @@ export const WhatsAppProvider: React.FC<WhatsAppProviderProps> = ({ children }) 
     }
   };
 
-  // Helper methods to get data for specific instance
-  const getInstanceContacts = (instanceId: number) => {
-    return contacts.filter(contact => !contact.isGroup && contact.instanceId === instanceId);
-  };
+  const groups = contacts.filter(contact => contact.isGroup);
+  const scheduledMessages = messages.filter(message => message.status === 'scheduled');
 
-  const getInstanceGroups = (instanceId: number) => {
-    return contacts.filter(contact => contact.isGroup && contact.instanceId === instanceId);
-  };
-
-  const getInstanceMessages = (instanceId: number) => {
-    return messages.filter(message => message.instanceId === instanceId);
-  };
-
-  const getInstanceScheduledMessages = (instanceId: number) => {
-    return messages.filter(message => 
-      message.status === 'scheduled' && message.instanceId === instanceId
-    );
-  };
-
-  // Derived states
-  const filteredContacts = activeInstanceId 
-    ? contacts.filter(contact => !contact.isGroup && contact.instanceId === activeInstanceId)
-    : [];
-    
-  const groups = activeInstanceId 
-    ? contacts.filter(contact => contact.isGroup && contact.instanceId === activeInstanceId)
-    : [];
-    
-  const scheduledMessages = activeInstanceId 
-    ? messages.filter(message => message.status === 'scheduled' && message.instanceId === activeInstanceId)
-    : [];
-
-  // Computed active instance
-  const activeInstance = instances.find(instance => instance.id === activeInstanceId) || null;
-  
   return (
     <WhatsAppContext.Provider value={{
-      instances,
-      setInstances,
-      activeInstanceId,
-      setActiveInstanceId,
       isConnected,
       isConnecting,
       qrCode,
-      activeInstance,
-      contacts: filteredContacts,
+      contacts: contacts.filter(contact => !contact.isGroup),
       groups,
       messages,
       scheduledMessages,
       initializeWhatsApp,
       refreshContacts,
-      getInstanceContacts,
-      getInstanceGroups,
-      getInstanceMessages,
-      getInstanceScheduledMessages,
-      createInstance,
-      updateInstance,
-      deleteInstance,
       sendMessage,
       deleteMessage,
     }}>

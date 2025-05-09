@@ -10,7 +10,6 @@ import Contacts from "@/pages/Contacts";
 import Groups from "@/pages/Groups";
 import ScheduledMessages from "@/pages/ScheduledMessages";
 import History from "@/pages/History";
-import WhatsAppInstances from "@/pages/WhatsAppInstances";
 import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth-page";
 import { WhatsAppProvider } from "@/contexts/WhatsAppContext";
@@ -77,12 +76,6 @@ function Router() {
       <ProtectedRoute path="/history" component={() => (
         <AuthenticatedLayout>
           <History />
-        </AuthenticatedLayout>
-      )} />
-      
-      <ProtectedRoute path="/instances" component={() => (
-        <AuthenticatedLayout>
-          <WhatsAppInstances />
         </AuthenticatedLayout>
       )} />
       
