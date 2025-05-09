@@ -91,6 +91,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Rota para resetar o usuário administrador (necessário para o ambiente de produção)
+  app.post("/api/reset-admin", async (req: Request, res: Response) => {
+    try {
+      // Remover usuários existentes
+      await pool.query('TRUNCATE TABLE "users" CASCADE');
+      console.log("🔧 Tabela de usuários limpa com sucesso!");
+      
+      // Criar novo admin com credenciais padrão
+      const password = await hashPassword("admin");
+      const newAdmin = await dbStorage.createUser({
+        username: "admin",
+        password
+      });
+      
+      console.log("🔧 Usuário admin criado com sucesso:", newAdmin.id);
+      
+      return res.json({ 
+        success: true, 
+        message: 'Admin resetado com sucesso. Use as credenciais: admin/admin para login',
+        username: "admin",
+        password: "admin" // Apenas para mostrar a senha inicial
+      });
+    } catch (error) {
+      console.error("Erro ao resetar admin:", error);
+      return res.status(500).json({ 
+        error: 'Erro ao resetar admin', 
+        details: (error as Error).message 
+      });
+    }
+  });
+  
   // Rota de teste para resetar senha (APENAS PARA DESENVOLVIMENTO)
   if (process.env.NODE_ENV === 'development') {
     app.post("/api/reset-password", async (req: Request, res: Response) => {
@@ -208,6 +239,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     '/api/sheets/initialize',
     '/api/calendar/appointments',
     '/api/sheets/contacts',
+    '/api/reset-admin'  // Nova rota para resetar o admin
   ];
   
   // Os endpoints da API devem ser protegidos mas retornar 401 em vez de redirecionar
