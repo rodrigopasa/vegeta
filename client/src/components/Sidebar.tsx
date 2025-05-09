@@ -1,10 +1,10 @@
 import React from 'react';
-import { Link, useLocation } from 'wouter';
+import { useLocation } from 'wouter';
 import { useWhatsApp } from '@/contexts/WhatsAppContext';
 import { useAuth } from '@/hooks/use-auth';
 
 const Sidebar: React.FC = () => {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const { scheduledMessages } = useWhatsApp();
   const auth = useAuth();
   
@@ -40,12 +40,11 @@ const Sidebar: React.FC = () => {
       {/* Navigation items */}
       <div className="flex flex-col flex-1 overflow-y-auto py-4 px-2 space-y-1">
         {menuItems.map((item) => (
-          <Link 
+          <button 
             key={item.path}
-            href={item.path}
-            onClick={(e) => {
-              console.log('Clicado no link:', item.path);
-              // O comportamento padrão do Link será executado após este log
+            onClick={() => {
+              console.log('Navegando para:', item.path);
+              window.location.href = item.path;
             }}
             className={`flex items-center px-4 py-3 rounded-lg transition-all duration-200 relative z-20 cursor-pointer ${
               location === item.path
@@ -60,20 +59,37 @@ const Sidebar: React.FC = () => {
                 {item.count}
               </span>
             )}
-          </Link>
+          </button>
         ))}
       </div>
       
       {/* Settings and logout */}
       <div className="mt-auto">
         <div className="px-2 pb-2">
-          <Link
-            href="/settings"
-            className="flex items-center px-4 py-3 rounded-lg hover:bg-gray-50 text-[hsl(var(--text-light))] hover:text-[hsl(var(--text-dark))] transition-all duration-200"
+          <button
+            onClick={() => {
+              console.log('Navegando para: /settings');
+              window.location.href = '/settings';
+            }}
+            className="flex items-center w-full px-4 py-3 rounded-lg hover:bg-gray-50 text-[hsl(var(--text-light))] hover:text-[hsl(var(--text-dark))] transition-all duration-200"
           >
             <i className="fas fa-cog text-xl w-6"></i>
             <span className="ml-3 hidden md:block">Configurações</span>
-          </Link>
+          </button>
+        </div>
+        
+        {/* Link direto para Integrações Google */}
+        <div className="px-2 pb-2">
+          <button
+            onClick={() => {
+              console.log('Navegando para: /google-integrations');
+              window.location.href = '/google-integrations';
+            }}
+            className="flex items-center w-full px-4 py-3 rounded-lg bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))] font-medium shadow-sm"
+          >
+            <i className="fas fa-google text-xl w-6"></i>
+            <span className="ml-3 hidden md:block">Integrações Google</span>
+          </button>
         </div>
         
         {/* User profile section */}
