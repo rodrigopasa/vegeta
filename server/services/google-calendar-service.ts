@@ -18,6 +18,58 @@ class GoogleCalendarService {
   private calendarId: string | null = null;
   
   /**
+   * Define o ID do calendário a ser usado
+   * @param id ID do calendário
+   */
+  setCalendarId(id: string): void {
+    this.calendarId = id;
+    // Resetar estado de inicialização para forçar nova conexão
+    this.initialized = false;
+  }
+  
+  /**
+   * Obtém o ID do calendário atual
+   * @returns ID do calendário
+   */
+  getCalendarId(): string | null {
+    return this.calendarId;
+  }
+  
+  /**
+   * Lista os eventos do calendário
+   * @param maxResults Número máximo de resultados a retornar
+   * @returns Lista de eventos
+   */
+  async listEvents(maxResults: number = 10): Promise<any[]> {
+    if (!this.initialized) {
+      const initialized = await this.initialize();
+      if (!initialized) {
+        throw new Error("Serviço Google Calendar não inicializado");
+      }
+    }
+    
+    try {
+      const now = new Date();
+      const twoWeeksLater = new Date();
+      twoWeeksLater.setDate(now.getDate() + 14);
+      
+      const response = await this.calendar.events.list({
+        calendarId: this.calendarId,
+        timeMin: now.toISOString(),
+        timeMax: twoWeeksLater.toISOString(),
+        maxResults: maxResults,
+        singleEvents: true,
+        orderBy: 'startTime'
+      });
+      
+      return response.data.items || [];
+    } catch (error) {
+      log(`Erro ao listar eventos no Google Calendar: ${error}`, "google-calendar");
+      return [];
+    }
+  }
+  
+  /**
    * Inicializa a conexão com a API do Google Calendar
    */
   async initialize(): Promise<boolean> {

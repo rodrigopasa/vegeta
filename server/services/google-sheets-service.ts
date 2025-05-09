@@ -14,6 +14,7 @@ class GoogleSheetsService {
   private sheets: any = null;
   private initialized: boolean = false;
   private spreadsheetId: string | null = null;
+  private sheetName: string = 'Contatos';
   
   // Configurações das planilhas
   private sheets_config = {
@@ -26,6 +27,47 @@ class GoogleSheetsService {
       headers: ['ID', 'Nome Cliente', 'Telefone', 'Serviço', 'Data', 'Horário', 'Status', 'Notas', 'Data Criação']
     }
   };
+  
+  /**
+   * Define o ID da planilha a ser usada
+   * @param id ID da planilha do Google Sheets
+   */
+  setSpreadsheetId(id: string): void {
+    this.spreadsheetId = id;
+    // Resetar estado de inicialização para forçar nova conexão
+    this.initialized = false;
+  }
+  
+  /**
+   * Define o nome da aba para contatos
+   * @param name Nome da aba
+   */
+  setSheetName(name: string): void {
+    this.sheetName = name;
+    this.sheets_config.contacts_sheet.name = name;
+  }
+  
+  /**
+   * Testa a conexão com o Google Sheets
+   * @returns true se a conexão estiver funcionando
+   */
+  async testConnection(): Promise<boolean> {
+    try {
+      if (!this.initialized) {
+        await this.initialize();
+      }
+      
+      // Tenta obter informações sobre a planilha para verificar se a conexão funciona
+      const response = await this.sheets.spreadsheets.get({
+        spreadsheetId: this.spreadsheetId
+      });
+      
+      return true;
+    } catch (error) {
+      log(`Erro ao testar conexão com Google Sheets: ${error}`, "google-sheets");
+      throw error;
+    }
+  }
   
   /**
    * Inicializa a conexão com a API do Google Sheets
