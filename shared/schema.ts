@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, integer, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, boolean, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -21,6 +21,9 @@ export const contacts = pgTable("contacts", {
   phoneNumber: text("phone_number").notNull().unique(),
   isGroup: boolean("is_group").default(false),
   memberCount: integer("member_count"),
+  email: text("email"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const insertContactSchema = createInsertSchema(contacts).pick({
@@ -28,6 +31,8 @@ export const insertContactSchema = createInsertSchema(contacts).pick({
   phoneNumber: true,
   isGroup: true,
   memberCount: true,
+  email: true,
+  notes: true,
 });
 
 // Message schema
@@ -58,6 +63,42 @@ export const insertMessageSchema = createInsertSchema(messages).omit({
   createdAt: true,
 });
 
+// Chatbot sessions schema
+export const chatbotSessions = pgTable("chatbot_sessions", {
+  id: serial("id").primaryKey(),
+  contactId: integer("contact_id").references(() => contacts.id),
+  sessionId: text("session_id").notNull(),
+  lastMessage: timestamp("last_message").defaultNow(),
+  conversationHistory: jsonb("conversation_history").default('[]'),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertChatbotSessionSchema = createInsertSchema(chatbotSessions).omit({
+  id: true,
+  lastMessage: true,
+  createdAt: true,
+});
+
+// Appointments schema
+export const appointments = pgTable("appointments", {
+  id: serial("id").primaryKey(),
+  contactId: integer("contact_id").references(() => contacts.id),
+  title: text("title").notNull(),
+  description: text("description"),
+  startTime: timestamp("start_time").notNull(),
+  endTime: timestamp("end_time").notNull(),
+  googleEventId: text("google_event_id"),
+  status: text("status").default("scheduled"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertAppointmentSchema = createInsertSchema(appointments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Exports for types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -67,6 +108,12 @@ export type Contact = typeof contacts.$inferSelect;
 
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Message = typeof messages.$inferSelect;
+
+export type InsertChatbotSession = z.infer<typeof insertChatbotSessionSchema>;
+export type ChatbotSession = typeof chatbotSessions.$inferSelect;
+
+export type InsertAppointment = z.infer<typeof insertAppointmentSchema>;
+export type Appointment = typeof appointments.$inferSelect;
 
 // Extended message schema with validation
 export const messageWithValidationSchema = insertMessageSchema.extend({

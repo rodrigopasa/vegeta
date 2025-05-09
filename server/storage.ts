@@ -28,6 +28,24 @@ export interface IStorage {
   createMessage(message: InsertMessage): Promise<Message>;
   updateMessage(id: number, message: Partial<Message>): Promise<Message | undefined>;
   deleteMessage(id: number): Promise<boolean>;
+  
+  // Chatbot session methods
+  getChatbotSessions(): Promise<ChatbotSession[]>;
+  getChatbotSession(id: number): Promise<ChatbotSession | undefined>;
+  getChatbotSessionBySessionId(sessionId: string): Promise<ChatbotSession | undefined>;
+  getChatbotSessionsByContactId(contactId: number): Promise<ChatbotSession[]>;
+  createChatbotSession(session: InsertChatbotSession): Promise<ChatbotSession>;
+  updateChatbotSession(id: number, session: Partial<ChatbotSession>): Promise<ChatbotSession | undefined>;
+  deleteChatbotSession(id: number): Promise<boolean>;
+  
+  // Appointment methods
+  getAppointments(): Promise<Appointment[]>;
+  getAppointment(id: number): Promise<Appointment | undefined>;
+  getAppointmentsByContactId(contactId: number): Promise<Appointment[]>;
+  getAppointmentsByDateRange(startDate: Date, endDate: Date): Promise<Appointment[]>;
+  createAppointment(appointment: InsertAppointment): Promise<Appointment>;
+  updateAppointment(id: number, appointment: Partial<Appointment>): Promise<Appointment | undefined>;
+  deleteAppointment(id: number): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
