@@ -25,7 +25,7 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
   // Estado interno para controlar a visibilidade
   const [isVisible, setIsVisible] = useState(isOpen);
   const { toast } = useToast();
-  const { isConnected, contacts, groups, sendMessage } = useWhatsApp();
+  const { isConnected, contacts, groups, sendMessage, activeInstanceId } = useWhatsApp();
   
   // Referências
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -133,7 +133,7 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
   
   // Enviar mensagem para contato salvo
   const handleSendToSavedContact = async () => {
-    if (!selectedRecipient || !message.trim()) return;
+    if (!selectedRecipient || !message.trim() || !activeInstanceId) return;
     
     try {
       setIsSending(true);
@@ -147,6 +147,7 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
       } : undefined;
       
       await sendMessage(
+        activeInstanceId,
         selectedRecipient, 
         message, 
         undefined,
@@ -171,7 +172,7 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
   
   // Enviar mensagem para novo contato
   const handleSendToNewContact = async () => {
-    if (!newRecipientPhone || !message.trim()) return;
+    if (!newRecipientPhone || !message.trim() || !activeInstanceId) return;
     
     try {
       setIsSending(true);
@@ -187,6 +188,7 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
       } : undefined;
       
       await sendMessage(
+        activeInstanceId,
         formattedPhone,
         message,
         undefined,
