@@ -1,124 +1,149 @@
 import OpenAI from "openai";
-
-// the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-export interface ChatMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-}
+import { log } from '../vite';
 
 class OpenAIService {
-  private defaultSystemPrompt = `Você é um assistente virtual de uma empresa. Ajude os clientes de forma educada e profissional.
-  
-  Suas principais funções são:
-  1. Responder dúvidas sobre produtos e serviços
-  2. Agendar consultas ou compromissos
-  3. Capturar informações de contato para o CRM
-  
-  Quando o cliente quiser agendar um compromisso, colete estas informações:
-  - Nome completo
-  - Data e horário desejados
-  - Tipo de serviço
-  - Número de telefone para confirmação
-  - Email (opcional)
-  
-  Horários disponíveis para agendamento: segunda a sexta, das 8h às 18h.
-  
-  Seja conciso, educado e solícito.`;
+  private openai: OpenAI | null = null;
+  private initialized: boolean = false;
+
+  constructor() {
+    this.initialize();
+  }
 
   /**
-   * Gera uma resposta para o chatbot usando a API da OpenAI
-   * @param messages Histórico de mensagens da conversa
-   * @param customSystemPrompt Prompt de sistema personalizado (opcional)
-   * @returns Resposta do assistente
+   * Inicializa o serviço OpenAI com a chave de API
    */
-  async generateChatResponse(
-    messages: ChatMessage[],
-    customSystemPrompt?: string
-  ): Promise<string> {
-    // Verificar se já existe uma mensagem de sistema
-    const hasSystemMessage = messages.some(msg => msg.role === 'system');
-    
-    // Preparar as mensagens para envio
-    const finalMessages = hasSystemMessage 
-      ? messages 
-      : [
-          { 
-            role: 'system', 
-            content: customSystemPrompt || this.defaultSystemPrompt
-          },
-          ...messages
-        ];
-    
+  initialize(): boolean {
     try {
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: finalMessages,
-        temperature: 0.7,
-        max_tokens: 500,
-      });
+      const apiKey = process.env.OPENAI_API_KEY;
       
-      return response.choices[0].message.content || "Desculpe, não consegui gerar uma resposta.";
+      if (!apiKey) {
+        log("Chave de API da OpenAI não configurada", "openai-service");
+        return false;
+      }
+
+      this.openai = new OpenAI({ apiKey });
+      this.initialized = true;
+
+      log("Serviço OpenAI inicializado com sucesso", "openai-service");
+      return true;
     } catch (error) {
-      console.error("Erro ao gerar resposta com OpenAI:", error);
-      return "Desculpe, ocorreu um erro ao processar sua mensagem. Por favor, tente novamente mais tarde.";
+      log(`Erro ao inicializar serviço OpenAI: ${error}`, "openai-service");
+      return false;
     }
   }
 
   /**
-   * Extrai informações estruturadas de uma conversa
-   * @param conversation Histórico completo da conversa
-   * @returns Objeto com informações extraídas da conversa
+   * Envia uma mensagem para o modelo GPT da OpenAI
+   * @param systemPrompt Instruções do sistema
+   * @param messages Histórico de mensagens
+   * @returns Resposta do modelo
    */
-  async extractStructuredInformation(conversation: ChatMessage[]): Promise<{
-    name?: string;
-    email?: string;
-    phone?: string;
-    appointment?: {
-      date?: string;
-      time?: string;
-      service?: string;
-    };
-    interests?: string[];
-    hasPendingAppointment: boolean;
-  }> {
-    const promptMessages: ChatMessage[] = [
-      {
-        role: 'system',
-        content: `Você é um assistente especializado em extrair informações estruturadas de conversas.
-        Analise a conversa e extraia as seguintes informações:
-        - Nome do cliente
-        - Email do cliente (se mencionado)
-        - Telefone do cliente (se mencionado)
-        - Agendamento (data, hora e tipo de serviço)
-        - Interesses do cliente
-        - Se há um agendamento pendente para ser confirmado
-        
-        Responda apenas em formato JSON com as chaves: name, email, phone, appointment (com sub-chaves date, time, service), interests (array) e hasPendingAppointment (boolean).
-        Se alguma informação não estiver disponível, omita o campo.`
-      },
-      ...conversation
-    ];
+  async sendMessage(systemPrompt: string, messages: any[]): Promise<string> {
+    if (!this.initialized || !this.openai) {
+      const initialized = this.initialize();
+      if (!initialized) {
+        throw new Error("Serviço OpenAI não está inicializado");
+      }
+    }
 
     try {
-      const response = await openai.chat.completions.create({
+      // Preparar mensagens para API
+      const systemMessage = {
+        role: "system",
+        content: systemPrompt
+      };
+
+      const formattedMessages = [systemMessage, ...messages];
+
+      // Fazer chamada para API da OpenAI
+      // o modelo mais recente da OpenAI é "gpt-4o", que foi lançado em 13 de maio de 2024. não altere isso a menos que explicitamente solicitado pelo usuário
+      const response = await this.openai.chat.completions.create({
         model: "gpt-4o",
-        messages: promptMessages,
-        temperature: 0,
-        max_tokens: 500,
-        response_format: { type: "json_object" }
+        messages: formattedMessages as any, // cast para superar questões de tipo
+        max_tokens: 1000,
+        temperature: 0.7,
       });
 
-      const content = response.choices[0].message.content;
-      if (!content) {
-        return { hasPendingAppointment: false };
-      }
-
-      return JSON.parse(content);
+      // Extrair resposta
+      const reply = response.choices[0].message.content || "";
+      return reply;
     } catch (error) {
-      console.error("Erro ao extrair informações estruturadas:", error);
-      return { hasPendingAppointment: false };
+      log(`Erro ao enviar mensagem para OpenAI: ${error}`, "openai-service");
+      throw error;
+    }
+  }
+
+  /**
+   * Analisa o sentimento de um texto usando OpenAI
+   * @param text Texto a ser analisado
+   * @returns Objeto com dados de análise
+   */
+  async analyzeSentiment(text: string): Promise<any> {
+    if (!this.initialized || !this.openai) {
+      const initialized = this.initialize();
+      if (!initialized) {
+        throw new Error("Serviço OpenAI não está inicializado");
+      }
+    }
+
+    try {
+      // o modelo mais recente da OpenAI é "gpt-4o", que foi lançado em 13 de maio de 2024. não altere isso a menos que explicitamente solicitado pelo usuário
+      const response = await this.openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content:
+              "Você é um analisador de intenções. Extraia informações estruturadas do texto fornecido.",
+          },
+          {
+            role: "user",
+            content: text,
+          },
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.3
+      });
+
+      // Extrair e tentar parsear o JSON da resposta
+      const responseText = response.choices[0].message.content || "{}";
+      try {
+        return JSON.parse(responseText);
+      } catch (parseError) {
+        log(`Erro ao parsear resposta JSON da OpenAI: ${parseError}`, "openai-service");
+        return {};
+      }
+    } catch (error) {
+      log(`Erro ao analisar sentimento com OpenAI: ${error}`, "openai-service");
+      throw error;
+    }
+  }
+
+  /**
+   * Gera uma imagem a partir de um prompt
+   * @param prompt Descrição da imagem desejada
+   * @returns URL da imagem gerada
+   */
+  async generateImage(prompt: string): Promise<string> {
+    if (!this.initialized || !this.openai) {
+      const initialized = this.initialize();
+      if (!initialized) {
+        throw new Error("Serviço OpenAI não está inicializado");
+      }
+    }
+
+    try {
+      const response = await this.openai.images.generate({
+        model: "dall-e-3",
+        prompt,
+        n: 1,
+        size: "1024x1024",
+      });
+
+      return response.data[0].url || "";
+    } catch (error) {
+      log(`Erro ao gerar imagem com OpenAI: ${error}`, "openai-service");
+      throw error;
     }
   }
 }

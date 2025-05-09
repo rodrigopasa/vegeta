@@ -1,5 +1,5 @@
-import { google, calendar_v3 } from 'googleapis';
-import { JWT } from 'google-auth-library';
+import { google } from 'googleapis';
+import { log } from '../vite';
 
 interface AppointmentData {
   summary: string;
@@ -13,87 +13,96 @@ interface AppointmentData {
 }
 
 class GoogleCalendarService {
-  private calendar: calendar_v3.Calendar | null = null;
+  private calendar: any = null;
   private initialized: boolean = false;
   private calendarId: string | null = null;
-
+  
   /**
-   * Inicializa o serviço do Google Calendar
-   * Requer as credenciais do Google Service Account em variáveis de ambiente:
-   * - GOOGLE_CLIENT_EMAIL
-   * - GOOGLE_PRIVATE_KEY
-   * - GOOGLE_CALENDAR_ID
+   * Inicializa a conexão com a API do Google Calendar
    */
   async initialize(): Promise<boolean> {
     try {
-      // Verificar se as variáveis de ambiente necessárias estão definidas
+      // Verificar se as credenciais estão definidas
       const clientEmail = process.env.GOOGLE_CLIENT_EMAIL;
-      const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+      const privateKey = process.env.GOOGLE_PRIVATE_KEY;
       this.calendarId = process.env.GOOGLE_CALENDAR_ID;
-
+      
       if (!clientEmail || !privateKey || !this.calendarId) {
-        console.error('Credenciais do Google não configuradas corretamente nas variáveis de ambiente');
+        log("Credenciais do Google Calendar não estão configuradas", "google-calendar");
         return false;
       }
-
-      // Criar cliente JWT para autenticação
-      const jwtClient = new JWT({
-        email: clientEmail,
-        key: privateKey,
-        scopes: ['https://www.googleapis.com/auth/calendar'],
-      });
-
-      // Inicializar o cliente Calendar
-      this.calendar = google.calendar({ version: 'v3', auth: jwtClient });
       
-      // Verificar se o calendário existe
-      await this.calendar.calendars.get({
-        calendarId: this.calendarId
+      // Criar cliente de autenticação
+      const auth = new google.auth.JWT({
+        email: clientEmail,
+        key: privateKey.replace(/\\n/g, '\n'),
+        scopes: ['https://www.googleapis.com/auth/calendar']
       });
-
+      
+      // Inicializar cliente do Calendar
+      this.calendar = google.calendar({ version: 'v3', auth });
       this.initialized = true;
-      console.log('Serviço do Google Calendar inicializado com sucesso');
+      
+      log("Google Calendar inicializado com sucesso", "google-calendar");
       return true;
     } catch (error) {
-      console.error('Erro ao inicializar serviço do Google Calendar:', error);
+      log(`Erro ao inicializar Google Calendar: ${error}`, "google-calendar");
       return false;
     }
   }
-
+  
   /**
-   * Verifica a disponibilidade de horário para agendamento
-   * @param startTime Data e hora de início
-   * @param endTime Data e hora de término
+   * Verifica se um horário está disponível para agendamento
+   * @param startTime Horário de início
+   * @param endTime Horário de término
    * @returns true se o horário estiver disponível, false caso contrário
    */
   async checkAvailability(startTime: Date, endTime: Date): Promise<boolean> {
     if (!this.initialized) {
-      await this.initialize();
+      const initialized = await this.initialize();
+      if (!initialized) {
+        throw new Error("Serviço Google Calendar não inicializado");
+      }
     }
-
-    if (!this.calendar || !this.calendarId) {
-      console.error('Serviço do Google Calendar não inicializado');
-      return false;
-    }
-
+    
     try {
-      // Buscar eventos no período especificado
+      // Buscar eventos no intervalo de tempo
       const response = await this.calendar.events.list({
         calendarId: this.calendarId,
         timeMin: startTime.toISOString(),
         timeMax: endTime.toISOString(),
         singleEvents: true,
-        orderBy: 'startTime',
+        orderBy: 'startTime'
       });
-
-      // Se não houver eventos no período, o horário está disponível
-      return (response.data.items || []).length === 0;
+      
+      const events = response.data.items;
+      
+      // Se não houver eventos, o horário está disponível
+      if (!events || events.length === 0) {
+        return true;
+      }
+      
+      // Verificar se algum evento conflita com o horário solicitado
+      // Um evento conflita se seu horário de início for menor que o horário de término solicitado
+      // e seu horário de término for maior que o horário de início solicitado
+      for (const event of events) {
+        const eventStart = new Date(event.start.dateTime || event.start.date);
+        const eventEnd = new Date(event.end.dateTime || event.end.date);
+        
+        // Verificar se há sobreposição
+        if (eventStart < endTime && eventEnd > startTime) {
+          return false;
+        }
+      }
+      
+      return true;
     } catch (error) {
-      console.error('Erro ao verificar disponibilidade no Google Calendar:', error);
+      log(`Erro ao verificar disponibilidade: ${error}`, "google-calendar");
+      // Em caso de erro, assumir que o horário não está disponível por segurança
       return false;
     }
   }
-
+  
   /**
    * Cria um novo evento de agendamento no Google Calendar
    * @param appointment Dados do agendamento
@@ -101,194 +110,207 @@ class GoogleCalendarService {
    */
   async createAppointment(appointment: AppointmentData): Promise<string | null> {
     if (!this.initialized) {
-      await this.initialize();
+      const initialized = await this.initialize();
+      if (!initialized) {
+        throw new Error("Serviço Google Calendar não inicializado");
+      }
     }
-
-    if (!this.calendar || !this.calendarId) {
-      console.error('Serviço do Google Calendar não inicializado');
-      return null;
-    }
-
+    
     try {
-      // Construir o evento
-      const event: calendar_v3.Schema$Event = {
+      // Preparar evento para criação
+      const event: any = {
         summary: appointment.summary,
+        location: appointment.location || 'Local não especificado',
         description: appointment.description,
-        location: appointment.location,
         start: {
           dateTime: appointment.startTime.toISOString(),
-          timeZone: 'America/Sao_Paulo',
+          timeZone: 'America/Sao_Paulo'
         },
         end: {
           dateTime: appointment.endTime.toISOString(),
-          timeZone: 'America/Sao_Paulo',
+          timeZone: 'America/Sao_Paulo'
         },
+        // Campo personalizado para armazenar o telefone de contato
+        extendedProperties: {
+          private: {
+            phone: appointment.attendeePhone || 'Não informado'
+          }
+        }
       };
-
-      // Adicionar atendente se tiver email
+      
+      // Adicionar participantes, se informados
       if (appointment.attendeeEmail) {
         event.attendees = [
           {
             email: appointment.attendeeEmail,
-            displayName: appointment.attendeeName,
-            comment: appointment.attendeePhone ? `Telefone: ${appointment.attendeePhone}` : undefined
+            displayName: appointment.attendeeName || 'Cliente',
+            responseStatus: 'accepted'
           }
         ];
       }
-
-      // Criar o evento
+      
+      // Criar evento
       const response = await this.calendar.events.insert({
         calendarId: this.calendarId,
-        requestBody: event,
-        sendNotifications: true,
+        resource: event
       });
-
-      return response.data.id || null;
+      
+      const eventId = response.data.id;
+      log(`Evento criado no Google Calendar: ${eventId}`, "google-calendar");
+      
+      return eventId;
     } catch (error) {
-      console.error('Erro ao criar evento no Google Calendar:', error);
+      log(`Erro ao criar evento no Google Calendar: ${error}`, "google-calendar");
       return null;
     }
   }
-
+  
+  /**
+   * Obtém detalhes de um evento pelo ID
+   * @param eventId ID do evento
+   * @returns Detalhes do evento ou null se não encontrado
+   */
+  async getAppointment(eventId: string): Promise<any | null> {
+    if (!this.initialized) {
+      const initialized = await this.initialize();
+      if (!initialized) {
+        throw new Error("Serviço Google Calendar não inicializado");
+      }
+    }
+    
+    try {
+      const response = await this.calendar.events.get({
+        calendarId: this.calendarId,
+        eventId: eventId
+      });
+      
+      return response.data;
+    } catch (error) {
+      log(`Erro ao buscar evento ${eventId} no Google Calendar: ${error}`, "google-calendar");
+      return null;
+    }
+  }
+  
   /**
    * Atualiza um evento existente
-   * @param eventId ID do evento a ser atualizado
-   * @param updatedData Dados atualizados do agendamento
-   * @returns true se atualizado com sucesso, false caso contrário
+   * @param eventId ID do evento
+   * @param updateData Dados a serem atualizados
+   * @returns true se a atualização foi bem-sucedida, false caso contrário
    */
-  async updateAppointment(eventId: string, updatedData: Partial<AppointmentData>): Promise<boolean> {
+  async updateAppointment(eventId: string, updateData: Partial<AppointmentData>): Promise<boolean> {
     if (!this.initialized) {
-      await this.initialize();
+      const initialized = await this.initialize();
+      if (!initialized) {
+        throw new Error("Serviço Google Calendar não inicializado");
+      }
     }
-
-    if (!this.calendar || !this.calendarId) {
-      console.error('Serviço do Google Calendar não inicializado');
-      return false;
-    }
-
+    
     try {
-      // Buscar o evento existente
-      const existingEvent = await this.calendar.events.get({
-        calendarId: this.calendarId,
-        eventId: eventId,
-      });
-
-      if (!existingEvent.data) {
-        console.error(`Evento com ID ${eventId} não encontrado`);
-        return false;
+      // Obter evento atual
+      const currentEvent = await this.getAppointment(eventId);
+      if (!currentEvent) {
+        throw new Error(`Evento ${eventId} não encontrado`);
       }
-
-      // Atualizar os campos
-      const updatedEvent: calendar_v3.Schema$Event = { ...existingEvent.data };
-
-      if (updatedData.summary) {
-        updatedEvent.summary = updatedData.summary;
-      }
-
-      if (updatedData.description) {
-        updatedEvent.description = updatedData.description;
-      }
-
-      if (updatedData.location) {
-        updatedEvent.location = updatedData.location;
-      }
-
-      if (updatedData.startTime) {
-        updatedEvent.start = {
-          dateTime: updatedData.startTime.toISOString(),
-          timeZone: 'America/Sao_Paulo',
+      
+      // Preparar dados para atualização
+      const event: any = {
+        summary: updateData.summary !== undefined ? updateData.summary : currentEvent.summary,
+        location: updateData.location !== undefined ? updateData.location : currentEvent.location,
+        description: updateData.description !== undefined ? updateData.description : currentEvent.description
+      };
+      
+      // Atualizar horários, se informados
+      if (updateData.startTime) {
+        event.start = {
+          dateTime: updateData.startTime.toISOString(),
+          timeZone: 'America/Sao_Paulo'
         };
       }
-
-      if (updatedData.endTime) {
-        updatedEvent.end = {
-          dateTime: updatedData.endTime.toISOString(),
-          timeZone: 'America/Sao_Paulo',
+      
+      if (updateData.endTime) {
+        event.end = {
+          dateTime: updateData.endTime.toISOString(),
+          timeZone: 'America/Sao_Paulo'
         };
       }
-
-      if (updatedData.attendeeEmail) {
-        updatedEvent.attendees = [
-          {
-            email: updatedData.attendeeEmail,
-            displayName: updatedData.attendeeName,
-            comment: updatedData.attendeePhone ? `Telefone: ${updatedData.attendeePhone}` : undefined
+      
+      // Atualizar propriedades estendidas
+      if (updateData.attendeePhone) {
+        event.extendedProperties = {
+          private: {
+            phone: updateData.attendeePhone
           }
-        ];
+        };
       }
-
-      // Enviar atualização
-      await this.calendar.events.update({
+      
+      // Atualizar evento
+      await this.calendar.events.patch({
         calendarId: this.calendarId,
         eventId: eventId,
-        requestBody: updatedEvent,
-        sendNotifications: true,
+        resource: event
       });
-
+      
+      log(`Evento ${eventId} atualizado no Google Calendar`, "google-calendar");
       return true;
     } catch (error) {
-      console.error('Erro ao atualizar evento no Google Calendar:', error);
+      log(`Erro ao atualizar evento ${eventId} no Google Calendar: ${error}`, "google-calendar");
       return false;
     }
   }
-
+  
   /**
-   * Cancela um agendamento existente
-   * @param eventId ID do evento a ser cancelado
-   * @returns true se cancelado com sucesso, false caso contrário
+   * Cancela (exclui) um evento
+   * @param eventId ID do evento
+   * @returns true se o cancelamento foi bem-sucedido, false caso contrário
    */
   async cancelAppointment(eventId: string): Promise<boolean> {
     if (!this.initialized) {
-      await this.initialize();
+      const initialized = await this.initialize();
+      if (!initialized) {
+        throw new Error("Serviço Google Calendar não inicializado");
+      }
     }
-
-    if (!this.calendar || !this.calendarId) {
-      console.error('Serviço do Google Calendar não inicializado');
-      return false;
-    }
-
+    
     try {
       await this.calendar.events.delete({
         calendarId: this.calendarId,
-        eventId: eventId,
-        sendNotifications: true,
+        eventId: eventId
       });
-
+      
+      log(`Evento ${eventId} cancelado no Google Calendar`, "google-calendar");
       return true;
     } catch (error) {
-      console.error('Erro ao cancelar evento no Google Calendar:', error);
+      log(`Erro ao cancelar evento ${eventId} no Google Calendar: ${error}`, "google-calendar");
       return false;
     }
   }
-
+  
   /**
-   * Obtém a lista de agendamentos para um determinado período
+   * Lista eventos em um intervalo de datas
    * @param startDate Data de início
    * @param endDate Data de término
-   * @returns Lista de eventos no período ou array vazio em caso de erro
+   * @returns Lista de eventos
    */
-  async getAppointments(startDate: Date, endDate: Date): Promise<any[]> {
+  async listAppointments(startDate: Date, endDate: Date): Promise<any[]> {
     if (!this.initialized) {
-      await this.initialize();
+      const initialized = await this.initialize();
+      if (!initialized) {
+        throw new Error("Serviço Google Calendar não inicializado");
+      }
     }
-
-    if (!this.calendar || !this.calendarId) {
-      console.error('Serviço do Google Calendar não inicializado');
-      return [];
-    }
-
+    
     try {
       const response = await this.calendar.events.list({
         calendarId: this.calendarId,
         timeMin: startDate.toISOString(),
         timeMax: endDate.toISOString(),
         singleEvents: true,
-        orderBy: 'startTime',
+        orderBy: 'startTime'
       });
-
+      
       return response.data.items || [];
     } catch (error) {
-      console.error('Erro ao buscar eventos no Google Calendar:', error);
+      log(`Erro ao listar eventos no Google Calendar: ${error}`, "google-calendar");
       return [];
     }
   }

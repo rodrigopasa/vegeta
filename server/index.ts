@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { whatsAppChatbot } from "./whatsapp-chatbot";
 import cors from 'cors';
 
 const app = express();
@@ -89,7 +90,19 @@ app.use((req, res, next) => {
     port,
     host: "0.0.0.0",
     reusePort: true,
-  }, () => {
+  }, async () => {
     log(`serving on port ${port}`);
+    
+    // Inicializar o chatbot do WhatsApp após o servidor estar pronto
+    try {
+      const initialized = await whatsAppChatbot.initialize();
+      if (initialized) {
+        log('Chatbot do WhatsApp inicializado com sucesso', 'whatsapp-chatbot');
+      } else {
+        log('Não foi possível inicializar o chatbot do WhatsApp', 'whatsapp-chatbot');
+      }
+    } catch (error) {
+      log(`Erro ao inicializar o chatbot do WhatsApp: ${error}`, 'whatsapp-chatbot');
+    }
   });
 })();

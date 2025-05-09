@@ -640,6 +640,146 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: (error as Error).message });
     }
   });
+  
+  // ===== Rotas para configuração do chatbot =====
+  
+  // Armazenamento em memória para configurações do chatbot (em produção, use banco de dados)
+  const chatbotSettings = {
+    prompt: `Você é um assistente virtual de uma empresa. Ajude os clientes de forma educada e profissional.
+  
+Suas principais funções são:
+1. Responder dúvidas sobre produtos e serviços
+2. Agendar consultas ou compromissos
+3. Capturar informações de contato para o CRM
+
+Quando o cliente quiser agendar um compromisso, colete estas informações:
+- Nome completo
+- Data e horário desejados
+- Tipo de serviço
+- Número de telefone para confirmação
+- Email (opcional)
+
+Horários disponíveis para agendamento: segunda a sexta, das 8h às 18h.
+
+Seja conciso, educado e solícito.`,
+    services: [],
+    schedules: [],
+    faqs: [],
+    fullPrompt: ''
+  };
+  
+  // Rota para obter prompt principal
+  app.get("/api/chatbot/settings/prompt", (req: Request, res: Response) => {
+    res.json({ prompt: chatbotSettings.prompt });
+  });
+  
+  // Rota para atualizar prompt principal
+  app.post("/api/chatbot/settings/prompt", (req: Request, res: Response) => {
+    try {
+      const { prompt } = req.body;
+      
+      if (!prompt || typeof prompt !== 'string') {
+        return res.status(400).json({ error: 'Prompt inválido' });
+      }
+      
+      chatbotSettings.prompt = prompt;
+      
+      // Atualizar o prompt completo também
+      chatbotSettings.fullPrompt = prompt;
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Erro ao atualizar prompt:', error);
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
+  
+  // Rota para obter serviços
+  app.get("/api/chatbot/settings/services", (req: Request, res: Response) => {
+    res.json(chatbotSettings.services);
+  });
+  
+  // Rota para atualizar serviços
+  app.post("/api/chatbot/settings/services", (req: Request, res: Response) => {
+    try {
+      const services = req.body;
+      
+      if (!Array.isArray(services)) {
+        return res.status(400).json({ error: 'Formato inválido. Esperado um array.' });
+      }
+      
+      chatbotSettings.services = services;
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Erro ao atualizar serviços:', error);
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
+  
+  // Rota para obter horários
+  app.get("/api/chatbot/settings/schedules", (req: Request, res: Response) => {
+    res.json(chatbotSettings.schedules);
+  });
+  
+  // Rota para atualizar horários
+  app.post("/api/chatbot/settings/schedules", (req: Request, res: Response) => {
+    try {
+      const schedules = req.body;
+      
+      if (!Array.isArray(schedules)) {
+        return res.status(400).json({ error: 'Formato inválido. Esperado um array.' });
+      }
+      
+      chatbotSettings.schedules = schedules;
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Erro ao atualizar horários:', error);
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
+  
+  // Rota para obter FAQs
+  app.get("/api/chatbot/settings/faqs", (req: Request, res: Response) => {
+    res.json(chatbotSettings.faqs);
+  });
+  
+  // Rota para atualizar FAQs
+  app.post("/api/chatbot/settings/faqs", (req: Request, res: Response) => {
+    try {
+      const faqs = req.body;
+      
+      if (!Array.isArray(faqs)) {
+        return res.status(400).json({ error: 'Formato inválido. Esperado um array.' });
+      }
+      
+      chatbotSettings.faqs = faqs;
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Erro ao atualizar FAQs:', error);
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
+  
+  // Rota para atualizar o prompt completo (combinando todas as configurações)
+  app.post("/api/chatbot/settings/full-prompt", (req: Request, res: Response) => {
+    try {
+      const { prompt } = req.body;
+      
+      if (!prompt || typeof prompt !== 'string') {
+        return res.status(400).json({ error: 'Prompt inválido' });
+      }
+      
+      chatbotSettings.fullPrompt = prompt;
+      
+      // Atualizar também no serviço de IA
+      // Em uma implementação completa, você atualizaria o prompt do sistema no serviço de IA
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Erro ao atualizar prompt completo:', error);
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
 
   // === Rotas para Chatbot Inteligente ===
   
