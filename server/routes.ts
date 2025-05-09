@@ -212,8 +212,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Os endpoints da API devem ser protegidos mas retornar 401 em vez de redirecionar
   app.use('/api', (req: Request, res: Response, next: NextFunction) => {
-    // Verifica se é uma rota pública ou se está autenticado
-    if (publicApiRoutes.includes(req.path) || req.isAuthenticated()) {
+    // Verifica se é uma rota pública, API Google ou se está autenticado
+    if (publicApiRoutes.includes(req.path) || 
+        req.path.startsWith('/api/calendar') ||
+        req.path.startsWith('/api/sheets') ||
+        req.isAuthenticated()) {
       return next();
     }
     
