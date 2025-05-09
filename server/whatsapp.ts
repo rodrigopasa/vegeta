@@ -39,6 +39,19 @@ class WhatsAppService implements WhatsAppManager {
   private instances: Map<number, WhatsAppInstanceData> = new Map();
   wss: WebSocketServer | null = null;
   messageScheduler: NodeJS.Timeout | null = null;
+  
+  // Propriedades para compatibilidade com implementação anterior
+  get isConnected(): boolean {
+    // Verificar se a instância principal (ID 1) está conectada
+    const instance = this.instances.get(1);
+    return instance ? instance.isConnected : false;
+  }
+  
+  get isInitialized(): boolean {
+    // Verificar se a instância principal (ID 1) está inicializada
+    const instance = this.instances.get(1);
+    return instance ? instance.isInitialized : false;
+  }
 
   constructor() {
     this.loadInstances();
@@ -120,6 +133,92 @@ class WhatsAppService implements WhatsAppManager {
     }
     
     return status;
+  }
+  
+  // Implementação dos métodos da interface WhatsAppManager
+  async getInstances(): Promise<WhatsappInstance[]> {
+    try {
+      return await dbStorage.getWhatsappInstances();
+    } catch (error) {
+      console.error('Error getting WhatsApp instances:', error);
+      throw error;
+    }
+  }
+  
+  async getInstance(instanceId: number): Promise<WhatsAppInstanceData | null> {
+    try {
+      const instanceData = this.instances.get(instanceId);
+      if (instanceData) {
+        return instanceData;
+      }
+      
+      // Se não estiver em memória, tenta buscar do banco de dados
+      const dbInstance = await dbStorage.getWhatsappInstance(instanceId);
+      if (!dbInstance) {
+        return null;
+      }
+      
+      // Criar nova instância em memória
+      const newInstanceData: WhatsAppInstanceData = {
+        id: dbInstance.id,
+        client: null,
+        isInitialized: false,
+        isConnected: false,
+        qrCode: null,
+        phoneNumber: dbInstance.phoneNumber,
+        name: dbInstance.name
+      };
+      
+      // Adicionar à coleção em memória
+      this.instances.set(instanceId, newInstanceData);
+      
+      return newInstanceData;
+    } catch (error) {
+      console.error(`Error getting WhatsApp instance ${instanceId}:`, error);
+      throw error;
+    }
+  }
+  
+  async createInstance(name: string, phoneNumber: string, description?: string): Promise<WhatsappInstance> {
+    try {
+      // Criar a nova instância no banco de dados
+      const newInstance = await dbStorage.createWhatsappInstance({
+        name,
+        phoneNumber,
+        description: description || null,
+        isActive: true
+      });
+      
+      // Inicializar a instância em memória
+      this.instances.set(newInstance.id, {
+        id: newInstance.id,
+        client: null,
+        isInitialized: false,
+        isConnected: false,
+        qrCode: null,
+        phoneNumber: newInstance.phoneNumber,
+        name: newInstance.name
+      });
+      
+      log(`Created new WhatsApp instance: ${name} (${phoneNumber})`, 'whatsapp');
+      
+      // Broadcast para os clientes WebSocket
+      this.broadcastToClients({
+        type: 'INSTANCE_CREATED',
+        payload: {
+          id: newInstance.id,
+          name: newInstance.name,
+          phoneNumber: newInstance.phoneNumber,
+          isActive: newInstance.isActive,
+          createdAt: newInstance.createdAt
+        }
+      });
+      
+      return newInstance;
+    } catch (error) {
+      console.error('Error creating WhatsApp instance:', error);
+      throw error;
+    }
   }
 
   async initializeClient(instanceId: number): Promise<void> {
