@@ -2,7 +2,7 @@ import React, { useRef, useState, ChangeEvent, useEffect, memo } from 'react';
 import { Paperclip, Loader, CheckCircle, AlertCircle, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useToast } from '@/hooks/use-toast';
+// Removemos o import do toast que estava causando problemas
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Spinner } from './Spinner';
 
@@ -18,7 +18,7 @@ interface FileUploaderProps {
 }
 
 export const FileUploader: React.FC<FileUploaderProps> = memo(({ onFileUploaded }) => {
-  const { toast } = useToast();
+  // Removido o hook que estava causando problemas
   const mediaInputRef = useRef<HTMLInputElement>(null);
   
   // Estado do upload
@@ -183,10 +183,8 @@ export const FileUploader: React.FC<FileUploaderProps> = memo(({ onFileUploaded 
           mediaCaption
         });
         
-        toast({
-          title: "Arquivo anexado",
-          description: `${localFileName} foi anexado com sucesso.`,
-        });
+        // Removemos o toast que estava causando o problema
+        // Agora usamos apenas o indicador visual no próprio componente
       } else {
         console.error("Formato de resposta inesperado:", data);
         throw new Error('Formato de resposta inesperado');
@@ -195,11 +193,8 @@ export const FileUploader: React.FC<FileUploaderProps> = memo(({ onFileUploaded 
       console.error('Error uploading file:', error);
       setUploadError(error instanceof Error ? error.message : "Erro desconhecido ao anexar arquivo");
       
-      toast({
-        title: "Erro ao anexar arquivo",
-        description: "Não foi possível anexar o arquivo. Tente novamente.",
-        variant: "destructive"
-      });
+      // Ao invés de usar toast, que pode causar problemas com o componente pai,
+      // apenas definimos o erro que será exibido dentro do próprio componente
       
       // Limpar estado em caso de erro
       clearFileState();
