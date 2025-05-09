@@ -1,106 +1,166 @@
 import { Request, Response } from 'express';
-import fs from 'fs';
-import path from 'path';
 import { googleCalendarService } from '../services/google-calendar-service';
 import { googleSheetsService } from '../services/google-sheets-service';
 
-// Caminho para os arquivos de configuração
-const CONFIG_DIR = path.join(process.cwd(), 'config');
-const CALENDAR_CONFIG_PATH = path.join(CONFIG_DIR, 'calendar-config.json');
-const SHEETS_CONFIG_PATH = path.join(CONFIG_DIR, 'sheets-config.json');
-
-// Verifica se o diretório de configuração existe
-if (!fs.existsSync(CONFIG_DIR)) {
-  fs.mkdirSync(CONFIG_DIR, { recursive: true });
-}
-
-// Funções para gerenciar a configuração do Google Calendar
+/**
+ * Obtém a configuração atual do Google Calendar
+ */
 export async function getCalendarConfig(req: Request, res: Response) {
   try {
-    if (fs.existsSync(CALENDAR_CONFIG_PATH)) {
-      const configData = fs.readFileSync(CALENDAR_CONFIG_PATH, 'utf8');
-      const config = JSON.parse(configData);
-      res.json(config);
-    } else {
-      // Se não existir configuração, retorna um objeto vazio
-      res.json({});
-    }
+    const calendarId = process.env.GOOGLE_CALENDAR_ID || null;
+    const clientEmail = process.env.GOOGLE_CLIENT_EMAIL || null;
+    
+    // Verifica se as credenciais estão configuradas
+    const hasCredentials = Boolean(clientEmail && process.env.GOOGLE_PRIVATE_KEY);
+    
+    // Obtém se o serviço está inicializado
+    const isInitialized = googleCalendarService && googleCalendarService.getCalendarId() !== null;
+    
+    res.json({
+      calendarId,
+      hasCredentials,
+      isInitialized
+    });
+    
   } catch (error) {
-    console.error('Erro ao obter configuração do Calendar:', error);
-    res.status(500).json({ error: 'Falha ao obter configuração do Google Calendar' });
+    console.error('Erro ao obter configuração do Google Calendar:', error);
+    res.status(500).json({ 
+      error: 'Erro ao obter configuração do Google Calendar', 
+      details: (error as Error).message 
+    });
   }
 }
 
+/**
+ * Inicializa o serviço do Google Calendar com um ID de calendário personalizado
+ */
 export async function initializeCalendar(req: Request, res: Response) {
   try {
     const { calendarId } = req.body;
     
     if (!calendarId) {
-      return res.status(400).json({ error: 'ID do calendário é obrigatório' });
+      return res.status(400).json({ 
+        error: 'ID do calendário é obrigatório'
+      });
     }
     
-    // Salva a configuração
-    const config = { calendarId };
-    fs.writeFileSync(CALENDAR_CONFIG_PATH, JSON.stringify(config, null, 2), 'utf8');
+    // Verifica se as credenciais do Google estão configuradas
+    const clientEmail = process.env.GOOGLE_CLIENT_EMAIL;
+    const privateKey = process.env.GOOGLE_PRIVATE_KEY;
     
-    // Testa a conexão com o Google Calendar
-    const events = await googleCalendarService.listEvents();
+    if (!clientEmail || !privateKey) {
+      return res.status(400).json({ 
+        error: 'Credenciais do Google não configuradas', 
+        requiredCredentials: ['GOOGLE_CLIENT_EMAIL', 'GOOGLE_PRIVATE_KEY'] 
+      });
+    }
     
-    res.json({ 
-      success: true, 
-      message: 'Calendário configurado com sucesso',
-      config,
-      events: events.slice(0, 5) // Retorna os 5 primeiros eventos para mostrar que está funcionando
-    });
+    // Define o ID do calendário e inicializa o serviço
+    googleCalendarService.setCalendarId(calendarId);
+    const success = await googleCalendarService.initialize();
+    
+    if (success) {
+      res.json({ 
+        success: true, 
+        message: 'Conexão com Google Calendar inicializada com sucesso',
+        calendarId
+      });
+    } else {
+      res.status(500).json({ 
+        error: 'Falha ao inicializar conexão com Google Calendar'
+      });
+    }
+    
   } catch (error) {
-    console.error('Erro ao inicializar Calendar:', error);
-    res.status(500).json({ error: 'Falha ao configurar o Google Calendar', details: error.message });
+    console.error('Erro ao inicializar Google Calendar:', error);
+    res.status(500).json({ 
+      error: 'Erro ao inicializar Google Calendar', 
+      details: (error as Error).message 
+    });
   }
 }
 
-// Funções para gerenciar a configuração do Google Sheets
+/**
+ * Obtém a configuração atual do Google Sheets
+ */
 export async function getSheetsConfig(req: Request, res: Response) {
   try {
-    if (fs.existsSync(SHEETS_CONFIG_PATH)) {
-      const configData = fs.readFileSync(SHEETS_CONFIG_PATH, 'utf8');
-      const config = JSON.parse(configData);
-      res.json(config);
-    } else {
-      // Se não existir configuração, retorna um objeto vazio
-      res.json({});
-    }
+    const spreadsheetId = process.env.GOOGLE_SHEET_ID || null;
+    const clientEmail = process.env.GOOGLE_CLIENT_EMAIL || null;
+    
+    // Verifica se as credenciais estão configuradas
+    const hasCredentials = Boolean(clientEmail && process.env.GOOGLE_PRIVATE_KEY);
+    
+    // Obtém o estado de inicialização do serviço
+    const isInitialized = googleSheetsService && googleSheetsService.spreadsheetId !== null;
+    
+    res.json({
+      spreadsheetId,
+      hasCredentials,
+      isInitialized
+    });
+    
   } catch (error) {
-    console.error('Erro ao obter configuração do Sheets:', error);
-    res.status(500).json({ error: 'Falha ao obter configuração do Google Sheets' });
+    console.error('Erro ao obter configuração do Google Sheets:', error);
+    res.status(500).json({ 
+      error: 'Erro ao obter configuração do Google Sheets', 
+      details: (error as Error).message 
+    });
   }
 }
 
+/**
+ * Inicializa o serviço do Google Sheets com um ID de planilha personalizado
+ */
 export async function initializeSheets(req: Request, res: Response) {
   try {
     const { spreadsheetId, sheetName } = req.body;
     
-    if (!spreadsheetId || !sheetName) {
-      return res.status(400).json({ error: 'ID da planilha e nome da aba são obrigatórios' });
+    if (!spreadsheetId) {
+      return res.status(400).json({ 
+        error: 'ID da planilha é obrigatório'
+      });
     }
     
-    // Salva a configuração
-    const config = { spreadsheetId, sheetName };
-    fs.writeFileSync(SHEETS_CONFIG_PATH, JSON.stringify(config, null, 2), 'utf8');
+    // Verifica se as credenciais do Google estão configuradas
+    const clientEmail = process.env.GOOGLE_CLIENT_EMAIL;
+    const privateKey = process.env.GOOGLE_PRIVATE_KEY;
     
-    // Configura o serviço do Google Sheets com o novo ID
+    if (!clientEmail || !privateKey) {
+      return res.status(400).json({ 
+        error: 'Credenciais do Google não configuradas', 
+        requiredCredentials: ['GOOGLE_CLIENT_EMAIL', 'GOOGLE_PRIVATE_KEY'] 
+      });
+    }
+    
+    // Define o ID da planilha e inicializa o serviço
     googleSheetsService.setSpreadsheetId(spreadsheetId);
-    googleSheetsService.setSheetName(sheetName);
     
-    // Testa a conexão com o Google Sheets
-    await googleSheetsService.testConnection();
+    // Se o nome da aba for fornecido, define-o também
+    if (sheetName) {
+      googleSheetsService.setSheetName(sheetName);
+    }
     
-    res.json({ 
-      success: true, 
-      message: 'Planilha configurada com sucesso',
-      config
-    });
+    const success = await googleSheetsService.initialize();
+    
+    if (success) {
+      res.json({ 
+        success: true, 
+        message: 'Conexão com Google Sheets inicializada com sucesso',
+        spreadsheetId,
+        sheetName: sheetName || 'Contatos'
+      });
+    } else {
+      res.status(500).json({ 
+        error: 'Falha ao inicializar conexão com Google Sheets'
+      });
+    }
+    
   } catch (error) {
-    console.error('Erro ao inicializar Sheets:', error);
-    res.status(500).json({ error: 'Falha ao configurar o Google Sheets', details: error.message });
+    console.error('Erro ao inicializar Google Sheets:', error);
+    res.status(500).json({ 
+      error: 'Erro ao inicializar Google Sheets', 
+      details: (error as Error).message 
+    });
   }
 }

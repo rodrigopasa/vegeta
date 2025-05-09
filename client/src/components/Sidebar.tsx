@@ -23,6 +23,7 @@ const Sidebar: React.FC = () => {
     { path: '/history', icon: 'fa-history', label: 'Histórico' },
     { path: '/chatbot', icon: 'fa-robot', label: 'Chatbot IA' },
     { path: '/chatbot-settings', icon: 'fa-cog', label: 'Configurar Chatbot' },
+    { path: '/google-integrations', icon: 'fa-google', label: 'Integrações Google' },
   ];
 
   return (

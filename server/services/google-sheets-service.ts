@@ -13,8 +13,13 @@ interface Contact {
 class GoogleSheetsService {
   private sheets: any = null;
   private initialized: boolean = false;
-  private spreadsheetId: string | null = null;
+  private _spreadsheetId: string | null = null;
   private sheetName: string = 'Contatos';
+  
+  // Getter para o ID da planilha
+  get spreadsheetId(): string | null {
+    return this._spreadsheetId;
+  }
   
   // Configurações das planilhas
   private sheets_config = {
@@ -33,7 +38,7 @@ class GoogleSheetsService {
    * @param id ID da planilha do Google Sheets
    */
   setSpreadsheetId(id: string): void {
-    this.spreadsheetId = id;
+    this._spreadsheetId = id;
     // Resetar estado de inicialização para forçar nova conexão
     this.initialized = false;
   }
@@ -59,7 +64,7 @@ class GoogleSheetsService {
       
       // Tenta obter informações sobre a planilha para verificar se a conexão funciona
       const response = await this.sheets.spreadsheets.get({
-        spreadsheetId: this.spreadsheetId
+        spreadsheetId: this._spreadsheetId
       });
       
       return true;
@@ -77,9 +82,9 @@ class GoogleSheetsService {
       // Verificar se as credenciais estão definidas
       const clientEmail = process.env.GOOGLE_CLIENT_EMAIL;
       const privateKey = process.env.GOOGLE_PRIVATE_KEY;
-      this.spreadsheetId = process.env.GOOGLE_SHEET_ID;
+      this._spreadsheetId = process.env.GOOGLE_SHEET_ID;
       
-      if (!clientEmail || !privateKey || !this.spreadsheetId) {
+      if (!clientEmail || !privateKey || !this._spreadsheetId) {
         log("Credenciais do Google Sheets não estão configuradas", "google-sheets");
         return false;
       }
@@ -110,14 +115,14 @@ class GoogleSheetsService {
    * Garante que as planilhas necessárias existam
    */
   private async ensureSheetsExist(): Promise<void> {
-    if (!this.initialized || !this.sheets || !this.spreadsheetId) {
+    if (!this.initialized || !this.sheets || !this._spreadsheetId) {
       throw new Error("Serviço Google Sheets não inicializado");
     }
     
     try {
       // Obter informações sobre a planilha
       const response = await this.sheets.spreadsheets.get({
-        spreadsheetId: this.spreadsheetId
+        spreadsheetId: this._spreadsheetId
       });
       
       const sheets = response.data.sheets;
@@ -142,14 +147,14 @@ class GoogleSheetsService {
    * Cria uma nova aba na planilha com os cabeçalhos especificados
    */
   private async createSheet(sheetName: string, headers: string[]): Promise<void> {
-    if (!this.initialized || !this.sheets || !this.spreadsheetId) {
+    if (!this.initialized || !this.sheets || !this._spreadsheetId) {
       throw new Error("Serviço Google Sheets não inicializado");
     }
     
     try {
       // Adicionar nova aba
       await this.sheets.spreadsheets.batchUpdate({
-        spreadsheetId: this.spreadsheetId,
+        spreadsheetId: this._spreadsheetId,
         resource: {
           requests: [
             {
@@ -165,7 +170,7 @@ class GoogleSheetsService {
       
       // Adicionar cabeçalhos
       await this.sheets.spreadsheets.values.update({
-        spreadsheetId: this.spreadsheetId,
+        spreadsheetId: this._spreadsheetId,
         range: `${sheetName}!A1:${this.columnToLetter(headers.length)}1`,
         valueInputOption: 'RAW',
         resource: {
@@ -210,7 +215,7 @@ class GoogleSheetsService {
       
       // Adicionar linha à planilha
       await this.sheets.spreadsheets.values.append({
-        spreadsheetId: this.spreadsheetId,
+        spreadsheetId: this._spreadsheetId,
         range: `${this.sheets_config.contacts_sheet.name}!A:F`,
         valueInputOption: 'RAW',
         insertDataOption: 'INSERT_ROWS',
