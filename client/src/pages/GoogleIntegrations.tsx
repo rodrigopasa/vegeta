@@ -41,14 +41,16 @@ const GoogleIntegrations: React.FC = () => {
   // Carrega as configurações atuais do Google Calendar
   const loadCalendarConfig = async () => {
     try {
-      const response = await apiRequest<CalendarConfig>({
-        url: '/api/calendar/config',
-        method: 'GET'
-      });
+      const response = await fetch('/api/calendar/config');
       
-      setCalendarConfig(response);
-      if (response.calendarId) {
-        setCalendarId(response.calendarId);
+      if (!response.ok) {
+        throw new Error(`API error: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      setCalendarConfig(data);
+      if (data.calendarId) {
+        setCalendarId(data.calendarId);
       }
     } catch (error) {
       console.error('Erro ao carregar configuração do Google Calendar:', error);
@@ -63,14 +65,16 @@ const GoogleIntegrations: React.FC = () => {
   // Carrega as configurações atuais do Google Sheets
   const loadSheetsConfig = async () => {
     try {
-      const response = await apiRequest<SheetsConfig>({
-        url: '/api/sheets/config',
-        method: 'GET'
-      });
+      const response = await fetch('/api/sheets/config');
       
-      setSheetsConfig(response);
-      if (response.spreadsheetId) {
-        setSpreadsheetId(response.spreadsheetId);
+      if (!response.ok) {
+        throw new Error(`API error: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      setSheetsConfig(data);
+      if (data.spreadsheetId) {
+        setSpreadsheetId(data.spreadsheetId);
       }
     } catch (error) {
       console.error('Erro ao carregar configuração do Google Sheets:', error);

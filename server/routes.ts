@@ -201,7 +201,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     '/api/force-register-admin', 
     '/api/users/count',
     '/api/user',
-    '/api/reset-password'
+    '/api/reset-password',
+    '/api/calendar/config',
+    '/api/calendar/initialize',
+    '/api/sheets/config',
+    '/api/sheets/initialize'
   ];
   
   // Os endpoints da API devem ser protegidos mas retornar 401 em vez de redirecionar
@@ -215,6 +219,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.status(401).json({ error: 'Unauthorized' });
   });
   
+  // Rota direta para acessar a página de integrações Google
+  app.get("/direct-access-google", (req: Request, res: Response) => {
+    const currentFilePath = new URL(import.meta.url).pathname;
+    const currentDir = path.dirname(currentFilePath);
+    const directAccessPath = path.resolve(currentDir, '../client/direct-access-google.html');
+    
+    console.log('Serving direct access Google page from path:', directAccessPath);
+    
+    if (fs.existsSync(directAccessPath)) {
+      res.sendFile(directAccessPath);
+    } else {
+      res.redirect('/google-integrations');
+    }
+  });
+
   // Rota direta para a página de login estática
   app.get("/static-login.html", (req: Request, res: Response) => {
     // Em ES modules, __dirname não está definido, então precisamos usar import.meta.url
@@ -388,6 +407,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // Se a rota já foi processada ou é pública, ou o usuário está autenticado
     if (req.path === '/static-login.html' || 
         req.path === '/reset-database' ||
+        req.path === '/direct-access-google' ||
         req.path.startsWith('/api/') || 
         req.path.endsWith('.js') || 
         req.path.endsWith('.css') ||
