@@ -12,19 +12,27 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   getUserCount(): Promise<number>;
   
-  // Contact methods
-  getContacts(): Promise<Contact[]>;
+  // WhatsApp Instance methods
+  getWhatsappInstances(): Promise<WhatsappInstance[]>;
+  getWhatsappInstance(id: number): Promise<WhatsappInstance | undefined>;
+  getWhatsappInstanceByPhone(phoneNumber: string): Promise<WhatsappInstance | undefined>;
+  createWhatsappInstance(instance: InsertWhatsappInstance): Promise<WhatsappInstance>;
+  updateWhatsappInstance(id: number, instance: Partial<InsertWhatsappInstance>): Promise<WhatsappInstance | undefined>;
+  deleteWhatsappInstance(id: number): Promise<boolean>;
+  
+  // Contact methods - agora com suporte a múltiplas instâncias
+  getContacts(instanceId?: number): Promise<Contact[]>;
   getContact(id: number): Promise<Contact | undefined>;
-  getContactByPhone(phoneNumber: string): Promise<Contact | undefined>;
+  getContactByPhone(phoneNumber: string, instanceId: number): Promise<Contact | undefined>;
   createContact(contact: InsertContact): Promise<Contact>;
   updateContact(id: number, contact: Partial<InsertContact>): Promise<Contact | undefined>;
   deleteContact(id: number): Promise<boolean>;
   
-  // Message methods
-  getMessages(): Promise<Message[]>;
+  // Message methods - agora com suporte a múltiplas instâncias
+  getMessages(instanceId?: number): Promise<Message[]>;
   getMessage(id: number): Promise<Message | undefined>;
-  getScheduledMessages(): Promise<Message[]>;
-  getPendingMessages(): Promise<Message[]>;
+  getScheduledMessages(instanceId?: number): Promise<Message[]>;
+  getPendingMessages(instanceId?: number): Promise<Message[]>;
   createMessage(message: InsertMessage): Promise<Message>;
   updateMessage(id: number, message: Partial<Message>): Promise<Message | undefined>;
   deleteMessage(id: number): Promise<boolean>;
