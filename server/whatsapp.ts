@@ -162,8 +162,32 @@ class WhatsAppService implements WhatsAppManager {
   private simulateClientForDevelopment() {
     log('🔧 Iniciando simulação de cliente WhatsApp para desenvolvimento', 'whatsapp');
     
-    // Simulando um cliente para desenvolvimento
-    this.client = {} as any;
+    // Simulando um cliente para desenvolvimento com eventos
+    const eventHandlers: Record<string, Function[]> = {};
+    
+    this.client = {
+      // Implementar um sistema de eventos simples
+      on: (event: string, callback: Function) => {
+        if (!eventHandlers[event]) {
+          eventHandlers[event] = [];
+        }
+        eventHandlers[event].push(callback);
+        log(`Registrado handler para evento "${event}"`, 'whatsapp');
+      },
+      
+      emit: (event: string, ...args: any[]) => {
+        if (eventHandlers[event]) {
+          for (const callback of eventHandlers[event]) {
+            try {
+              callback(...args);
+            } catch (error) {
+              log(`Erro ao executar callback para evento "${event}": ${error}`, 'whatsapp');
+            }
+          }
+        }
+      }
+    } as any;
+    
     this.isInitialized = true;
     this.isConnected = true;
     
@@ -207,8 +231,126 @@ class WhatsAppService implements WhatsAppManager {
       } else {
         log(`Usando ${existingContacts.length} contatos existentes no banco de dados`, 'whatsapp');
       }
+      
+      // Configurar simulação de recebimento de mensagens
+      this.setupSimulatedMessageReceiver();
+      
     } catch (error) {
       log(`Erro ao criar contatos simulados: ${error}`, 'whatsapp');
+    }
+  }
+  
+  // Configurar receptor simulado de mensagens para testes
+  private setupSimulatedMessageReceiver() {
+    if (!this.client || process.env.NODE_ENV !== 'development') return;
+    
+    // Adicionar rota para simular recebimento de mensagens
+    import('express').then(({ Router }) => {
+      const router = Router();
+      const app = require('./routes').getExpressApp();
+      
+      if (!app) {
+        log('Não foi possível obter instância do Express para configurar simulação', 'whatsapp');
+        return;
+      }
+      
+      // Rota para receber mensagens simuladas
+      router.post('/api/whatsapp/simulate/message', async (req, res) => {
+        try {
+          const { from, body } = req.body;
+          
+          if (!from || !body) {
+            return res.status(400).json({ error: 'Necessário fornecer from e body' });
+          }
+          
+          // Buscar contato para obter informações
+          const contact = await dbStorage.getContactByPhone(from);
+          
+          // Criar objeto de mensagem simulada
+          const simulatedMessage = {
+            from,
+            body,
+            isGroup: contact?.isGroup || false,
+            _data: {
+              notifyName: contact?.name || 'Desconhecido'
+            },
+            getChat: () => ({ isGroup: contact?.isGroup || false }),
+            getContact: () => ({ name: contact?.name || 'Desconhecido' })
+          };
+          
+          // Emitir evento de mensagem recebida
+          log(`Simulando mensagem recebida de ${from}: ${body}`, 'whatsapp');
+          this.client.emit('message', simulatedMessage);
+          
+          return res.json({ success: true, message: 'Mensagem simulada enviada com sucesso' });
+        } catch (error) {
+          log(`Erro ao simular mensagem: ${error}`, 'whatsapp');
+          return res.status(500).json({ error: `Erro ao simular mensagem: ${error}` });
+        }
+      });
+      
+      // Adicionar router ao app Express
+      app.use(router);
+      log('Simulador de recebimento de mensagens configurado', 'whatsapp');
+      
+      // Fazer algumas chamadas simuladas em intervalos
+      if (process.env.AUTO_SIMULATE_MESSAGES === 'true') {
+        setTimeout(() => {
+          this.simulateIncomingMessage();
+        }, 10000);
+      }
+    }).catch(error => {
+      log(`Erro ao configurar simulador de mensagens: ${error}`, 'whatsapp');
+    });
+  }
+  
+  // Simular mensagem recebida automaticamente
+  private async simulateIncomingMessage() {
+    try {
+      if (!this.client) return;
+      
+      const contacts = await dbStorage.getContacts();
+      if (contacts.length === 0) return;
+      
+      // Selecionar um contato aleatório que não seja grupo
+      const availableContacts = contacts.filter(c => !c.isGroup);
+      if (availableContacts.length === 0) return;
+      
+      const randomContact = availableContacts[Math.floor(Math.random() * availableContacts.length)];
+      
+      // Mensagens simuladas para teste
+      const testMessages = [
+        "Olá, gostaria de agendar um horário",
+        "Bom dia, vocês estão abertos hoje?",
+        "Qual o endereço da loja?",
+        "Preciso de ajuda com meu pedido",
+        "Quais são os horários de atendimento?"
+      ];
+      
+      const randomMessage = testMessages[Math.floor(Math.random() * testMessages.length)];
+      
+      // Criar objeto de mensagem simulada
+      const simulatedMessage = {
+        from: randomContact.phoneNumber,
+        body: randomMessage,
+        isGroup: false,
+        _data: {
+          notifyName: randomContact.name
+        },
+        getChat: () => ({ isGroup: false }),
+        getContact: () => ({ name: randomContact.name })
+      };
+      
+      // Emitir evento de mensagem recebida
+      log(`Simulando mensagem automática recebida de ${randomContact.name}: ${randomMessage}`, 'whatsapp');
+      this.client.emit('message', simulatedMessage);
+      
+      // Programar próxima mensagem simulada
+      setTimeout(() => {
+        this.simulateIncomingMessage();
+      }, 60000); // Simular nova mensagem a cada 1 minuto
+    } catch (error) {
+      log(`Erro ao simular mensagem automática: ${error}`, 'whatsapp');
     }
   }
 
