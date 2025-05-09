@@ -219,11 +219,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   whatsAppService.setupWebSockets(httpServer);
 
   // WhatsApp API Routes
-  app.get("/api/whatsapp/status", (req: Request, res: Response) => {
+  app.get("/api/whatsapp/status", async (req: Request, res: Response) => {
     try {
       // Obter instanceId do query param
       const instanceId = req.query.instanceId ? Number(req.query.instanceId) : 1;
-      const instance = whatsAppService.getInstance(instanceId);
+      const instance = await whatsAppService.getInstance(instanceId);
       if (!instance) {
         return res.status(404).json({ error: "WhatsApp instance not found" });
       }
@@ -392,16 +392,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         mediaType: messageData.mediaType,
         mediaPath: messageData.mediaPath,
         mediaName: messageData.mediaName,
-        mediaCaption: messageData.mediaCaption
+        mediaCaption: messageData.mediaCaption,
+        instanceId: messageData.instanceId // Adicionado parâmetro obrigatório da instância
       });
 
       // If no scheduled time or it's immediate, send right away
       if (!messageData.scheduledFor) {
         try {
           const messageId = await whatsAppService.sendMessage(
+            messageData.instanceId, // Adicionar instanceId como primeiro parâmetro
             messageData.recipient,
             messageData.content,
-            messageData.recipientName,
+            messageData.recipientName || null,
             messageData.mediaPath || null,
             messageData.mediaType || null,
             messageData.mediaCaption || null
@@ -415,7 +417,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Enviar notificação de sucesso para o número de administrador
           try {
-            await whatsAppService.sendStatusNotification(true, message);
+            await whatsAppService.sendStatusNotification(messageData.instanceId, true, message);
           } catch (error) {
             console.error('Failed to send status notification:', error);
             // Não propagamos o erro para não interromper o fluxo principal
@@ -431,7 +433,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Enviar notificação de falha para o número de administrador
           try {
-            await whatsAppService.sendStatusNotification(false, message, (error as Error).message);
+            await whatsAppService.sendStatusNotification(messageData.instanceId, false, message, (error as Error).message);
           } catch (notifError) {
             console.error('Failed to send failure notification:', notifError);
             // Não propagamos o erro para não interromper o fluxo principal

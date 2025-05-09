@@ -698,7 +698,7 @@ class WhatsAppService implements WhatsAppManager {
             });
             
             // Enviar notificação de sucesso para o administrador
-            await this._sendStatusNotification(true, message);
+            await this._sendStatusNotification(message.instanceId, true, message);
             
           } catch (error) {
             log(`Error sending scheduled message ${message.id}: ${error}`, 'whatsapp');
@@ -718,7 +718,7 @@ class WhatsAppService implements WhatsAppManager {
             });
             
             // Enviar notificação de falha para o administrador
-            await this._sendStatusNotification(false, message, (error as Error).message);
+            await this._sendStatusNotification(message.instanceId, false, message, (error as Error).message);
           }
         }
       } catch (error) {
