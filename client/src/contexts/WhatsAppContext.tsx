@@ -445,8 +445,17 @@ export const WhatsAppProvider: React.FC<WhatsAppProviderProps> = ({ children }) 
         description
       });
       
-      // Update instances list
-      await fetchInstances();
+      // Adicionar diretamente a nova instância à lista
+      // Esta é uma abordagem mais confiável do que esperar um recarregamento
+      setInstances(prev => [...prev, response]);
+      
+      // Além disso, vamos tentar atualizar a lista completa
+      try {
+        await fetchInstances();
+      } catch (fetchError) {
+        console.error('Erro ao atualizar lista de instâncias após criar:', fetchError);
+        // Mesmo com erro no fetch, já adicionamos a instância à lista acima
+      }
       
       toast({
         title: 'Instância criada',

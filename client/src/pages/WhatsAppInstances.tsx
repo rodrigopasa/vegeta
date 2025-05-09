@@ -17,7 +17,8 @@ import { useToast } from '@/hooks/use-toast';
 
 const WhatsAppInstances: React.FC = () => {
   const { 
-    instances, 
+    instances,
+    setInstances, 
     activeInstanceId, 
     setActiveInstanceId, 
     createInstance,
@@ -40,9 +41,31 @@ const WhatsAppInstances: React.FC = () => {
   const [formIsActive, setFormIsActive] = useState(true);
 
   const handleCreateInstance = async () => {
-    await createInstance(formName, formPhone, formDescription || undefined);
-    resetForm();
-    setIsCreateDialogOpen(false);
+    try {
+      const newInstance = await createInstance(formName, formPhone, formDescription || undefined);
+      console.log('Nova instância criada:', newInstance);
+      
+      // Forçar recarregamento das instâncias
+      const options = { 
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      };
+      
+      const response = await fetch('/api/whatsapp/instances', options);
+      if (response.ok) {
+        const data = await response.json();
+        setInstances(data);
+        console.log('Lista de instâncias atualizada após criação:', data);
+      }
+      
+      resetForm();
+      setIsCreateDialogOpen(false);
+    } catch (error) {
+      console.error('Erro ao criar instância:', error);
+    }
   };
 
   const handleUpdateInstance = async () => {
@@ -84,30 +107,36 @@ const WhatsAppInstances: React.FC = () => {
     return { label: 'Desconectado', variant: 'destructive' };
   };
 
-  // Efeito para recarregar as instâncias quando a página for carregada - apenas uma vez
+  // Efeito para forçar o recarregamento de instâncias quando a página for montada ou quando a rota for /instances
   useEffect(() => {
-    // Flag para controlar se o efeito já foi executado
-    let isExecuted = false;
-    
-    const fetchData = async () => {
-      // Se já executou, não faz nada
-      if (isExecuted) return;
-      
-      // Marca como executado
-      isExecuted = true;
-      
+    const fetchInstancesData = async () => {
       try {
-        // Utiliza fetch diretamente para garantir que as instâncias estejam atualizadas
-        const response = await fetch('/api/whatsapp/instances');
+        console.log("Carregando instâncias na página WhatsAppInstances");
+        
+        // Limpar cache antes de buscar
+        const options = { 
+          method: 'GET',
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        };
+        
+        // Utiliza fetch com cabeçalhos para evitar cache
+        const response = await fetch('/api/whatsapp/instances', options);
         if (!response.ok) {
           throw new Error('Erro ao carregar instâncias');
         }
         
-        // Exibe toast de sucesso apenas se houver instâncias
-        if (instances.length > 0) {
+        // Obter dados diretamente
+        const data = await response.json();
+        console.log(`${data.length} instâncias carregadas:`, data);
+        
+        // Exibe toast de sucesso apenas se houver instâncias e não for a carga inicial
+        if (data.length > 0) {
           toast({
             title: 'Instâncias WhatsApp',
-            description: `${instances.length} instâncias carregadas com sucesso.`,
+            description: `${data.length} instâncias carregadas com sucesso.`,
           });
         }
       } catch (error) {
@@ -120,13 +149,10 @@ const WhatsAppInstances: React.FC = () => {
       }
     };
     
-    fetchData();
+    // Executa o fetch imediatamente ao montar o componente
+    fetchInstancesData();
     
-    // Função de limpeza para evitar memory leaks
-    return () => {
-      isExecuted = true;
-    };
-  }, []);
+  }, [toast]);
   
   // Função para definir uma instância como ativa
   const setActive = (id: number) => {
