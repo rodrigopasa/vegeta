@@ -34,9 +34,16 @@ export class DatabaseStorage implements IStorage {
     return result.length || 0;
   }
 
-  async getContacts(): Promise<Contact[]> {
-    return db.select().from(contacts);
+async getContacts(): Promise<Contact[]> {
+  try {
+    const result = await db.select().from(contacts);
+    return Array.isArray(result) ? result : [];
+  } catch (error) {
+    console.error("Erro ao buscar contatos:", error);
+    return []; // Garante que um array seja retornado mesmo em erro
   }
+}
+
 
   async getContact(id: number): Promise<Contact | undefined> {
     const [contact] = await db.select().from(contacts).where(eq(contacts.id, id));
