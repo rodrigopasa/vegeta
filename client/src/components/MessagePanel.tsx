@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { formatPhone } from '@/lib/utils';
 import { Spinner } from './Spinner';
 import FileUploader from './FileUploader';
-import CSVImporter from './CSVImporter';
+import AdvancedCSVImporter from './AdvancedCSVImporter';
+import { formatPhoneNumberForDisplay, formatBrazilianPhoneNumber } from '@/lib/phoneUtils';
 
 interface MessagePanelProps {
   isOpen: boolean;
@@ -117,19 +118,13 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
     setSelectedRecipientName(name);
   };
   
-  // Formatar número de telefone
+  // Formatar número de telefone usando nossas novas funções de utilidade
   const formatPhoneNumber = (phone: string): string => {
-    let cleaned = phone.replace(/\D/g, '');
-    
-    if (cleaned.startsWith('0')) {
-      cleaned = cleaned.substring(1);
-    }
-    
-    if (!cleaned.startsWith('55')) {
-      cleaned = '55' + cleaned;
-    }
-    
-    return cleaned;
+    // Usar a função de formatação mais completa com remoção do 9 e adição de código do país
+    return formatBrazilianPhoneNumber(phone, {
+      removePrefixNine: true,
+      addCountryCode: true
+    });
   };
   
   // Enviar mensagem para contato salvo
@@ -371,7 +366,7 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
                       <p className="flex items-center text-sm">
                         <Phone className="h-4 w-4 text-[hsl(var(--whatsapp-green))] mr-2" />
                         <span>Enviando para:</span>
-                        <span className="font-medium ml-1">{formatPhone(formatPhoneNumber(newRecipientPhone))}</span>
+                        <span className="font-medium ml-1">{formatPhoneNumberForDisplay(newRecipientPhone)}</span>
                       </p>
                     </div>
                   )}
@@ -389,8 +384,8 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ isOpen, onClose }) => {
                       Importe contatos de um arquivo CSV para envio em massa. O arquivo deve conter colunas para nome e número de telefone.
                     </p>
                     
-                    <CSVImporter
-                      onComplete={(importedContacts) => {
+                    <AdvancedCSVImporter
+                      onComplete={(importedContacts: {name: string; phoneNumber: string; isValid: boolean; group?: string; notes?: string}[]) => {
                         // Quando o usuário terminar de importar os contatos
                         // Vamos manter a mensagem, mas alterar para a aba de envio em massa
                         toast({
