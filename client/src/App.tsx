@@ -86,6 +86,12 @@ function Router() {
         </AuthenticatedLayout>
       )} />
       
+      <ProtectedRoute path="/chatbot" component={() => (
+        <AuthenticatedLayout>
+          <ChatbotDemo />
+        </AuthenticatedLayout>
+      )} />
+      
       <Route>
         {() => (
           <AuthenticatedLayout>
