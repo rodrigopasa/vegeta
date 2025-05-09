@@ -12,6 +12,7 @@ import ScheduledMessages from "@/pages/ScheduledMessages";
 import History from "@/pages/History";
 import ChatbotDemo from "@/pages/ChatbotDemo";
 import ChatbotSettings from "@/pages/ChatbotSettings";
+import GoogleIntegrations from "@/pages/GoogleIntegrations";
 import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth-page";
 import { WhatsAppProvider } from "@/contexts/WhatsAppContext";
@@ -96,6 +97,12 @@ function Router() {
       <ProtectedRoute path="/chatbot-settings" component={() => (
         <AuthenticatedLayout>
           <ChatbotSettings />
+        </AuthenticatedLayout>
+      )} />
+      
+      <ProtectedRoute path="/google-integrations" component={() => (
+        <AuthenticatedLayout>
+          <GoogleIntegrations />
         </AuthenticatedLayout>
       )} />
       

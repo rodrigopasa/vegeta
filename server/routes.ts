@@ -17,6 +17,14 @@ import { chatbotService } from "./services/chatbot-service";
 import { googleSheetsService } from "./services/google-sheets-service";
 import { googleCalendarService } from "./services/google-calendar-service";
 
+// Importar funções para gerenciar configurações do Google
+import { 
+  getCalendarConfig, 
+  getSheetsConfig, 
+  initializeCalendar, 
+  initializeSheets 
+} from "./routes/google-integrations";
+
 // Configurar o armazenamento de arquivos com Multer
 const uploadStorage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -810,28 +818,35 @@ Seja conciso, educado e solícito.`,
   
   // === Rotas para Google Sheets (CRM) ===
   
+  // Obter configuração atual do Google Sheets
+  app.get("/api/sheets/config", async (req: Request, res: Response) => {
+    try {
+      await getSheetsConfig(req, res);
+    } catch (error) {
+      console.error('Erro ao obter configuração do Google Sheets:', error);
+      res.status(500).json({ 
+        error: 'Erro ao obter configuração do Google Sheets', 
+        details: (error as Error).message 
+      });
+    }
+  });
+  
   // Inicializar conexão com Google Sheets
   app.post("/api/sheets/initialize", async (req: Request, res: Response) => {
     try {
       // Verificar se as credenciais Google estão configuradas
       const clientEmail = process.env.GOOGLE_CLIENT_EMAIL;
       const privateKey = process.env.GOOGLE_PRIVATE_KEY;
-      const sheetId = process.env.GOOGLE_SHEET_ID;
       
-      if (!clientEmail || !privateKey || !sheetId) {
+      if (!clientEmail || !privateKey) {
         return res.status(400).json({ 
           error: 'Credenciais do Google não configuradas', 
-          requiredCredentials: ['GOOGLE_CLIENT_EMAIL', 'GOOGLE_PRIVATE_KEY', 'GOOGLE_SHEET_ID'] 
+          requiredCredentials: ['GOOGLE_CLIENT_EMAIL', 'GOOGLE_PRIVATE_KEY'] 
         });
       }
       
-      const success = await googleSheetsService.initialize();
-      
-      if (success) {
-        res.json({ success: true, message: 'Conexão com Google Sheets inicializada com sucesso' });
-      } else {
-        res.status(500).json({ error: 'Falha ao inicializar conexão com Google Sheets' });
-      }
+      // Chamar a função de inicialização do Google Sheets com o ID da planilha personalizado
+      await initializeSheets(req, res);
     } catch (error) {
       console.error('Erro ao inicializar Google Sheets:', error);
       res.status(500).json({ 
@@ -874,28 +889,35 @@ Seja conciso, educado e solícito.`,
   
   // === Rotas para Google Calendar (Agendamentos) ===
   
+  // Obter configuração atual do Google Calendar
+  app.get("/api/calendar/config", async (req: Request, res: Response) => {
+    try {
+      await getCalendarConfig(req, res);
+    } catch (error) {
+      console.error('Erro ao obter configuração do Google Calendar:', error);
+      res.status(500).json({ 
+        error: 'Erro ao obter configuração do Google Calendar', 
+        details: (error as Error).message 
+      });
+    }
+  });
+  
   // Inicializar conexão com Google Calendar
   app.post("/api/calendar/initialize", async (req: Request, res: Response) => {
     try {
       // Verificar se as credenciais Google estão configuradas
       const clientEmail = process.env.GOOGLE_CLIENT_EMAIL;
       const privateKey = process.env.GOOGLE_PRIVATE_KEY;
-      const calendarId = process.env.GOOGLE_CALENDAR_ID;
       
-      if (!clientEmail || !privateKey || !calendarId) {
+      if (!clientEmail || !privateKey) {
         return res.status(400).json({ 
           error: 'Credenciais do Google não configuradas', 
-          requiredCredentials: ['GOOGLE_CLIENT_EMAIL', 'GOOGLE_PRIVATE_KEY', 'GOOGLE_CALENDAR_ID'] 
+          requiredCredentials: ['GOOGLE_CLIENT_EMAIL', 'GOOGLE_PRIVATE_KEY'] 
         });
       }
       
-      const success = await googleCalendarService.initialize();
-      
-      if (success) {
-        res.json({ success: true, message: 'Conexão com Google Calendar inicializada com sucesso' });
-      } else {
-        res.status(500).json({ error: 'Falha ao inicializar conexão com Google Calendar' });
-      }
+      // Chamar a função de inicialização do Google Calendar com o ID do calendário personalizado
+      await initializeCalendar(req, res);
     } catch (error) {
       console.error('Erro ao inicializar Google Calendar:', error);
       res.status(500).json({ 
