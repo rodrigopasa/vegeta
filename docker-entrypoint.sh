@@ -16,7 +16,8 @@ echo "Aguardando o banco de dados em $DB_HOST:$DB_PORT..."
 wait-for-it $DB_HOST:$DB_PORT -t 60
 
 echo "Banco de dados disponível. Aplicando migrações..."
-npm run db:push
+# Usando a flag --force para evitar confirmações interativas durante as migrações
+npx drizzle-kit push --force
 
 echo "Migrações aplicadas. Iniciando a aplicação..."
 exec "$@"

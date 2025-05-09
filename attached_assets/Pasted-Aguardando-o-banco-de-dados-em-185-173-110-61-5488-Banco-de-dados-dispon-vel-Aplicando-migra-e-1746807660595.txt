@@ -1,0 +1,47 @@
+Aguardando o banco de dados em 185.173.110.61:5488...
+Banco de dados disponível. Aplicando migrações...
+
+> rest-express@1.0.0 db:push
+> drizzle-kit push
+
+No config path provided, using default 'drizzle.config.ts'
+Reading config file '/app/drizzle.config.ts'
+Using 'pg' driver for database querying
+[⣷] Pulling schema from database...
+KG[⣯] Pulling schema from database...
+KG[⣟] Pulling schema from database...
+KG[✓] Pulling schema from database...
+[?25l
+Is appointments table created or renamed from another table?
+❯ + appointments            create table
+  ~ sessions › appointments rename tableMigrações aplicadas. Iniciando a aplicação...
+
+> rest-express@1.0.0 start
+> NODE_ENV=production node dist/index.js
+
+4:18:22 PM [whatsapp] Initializing WhatsApp client
+4:18:22 PM [openai-service] Serviço OpenAI inicializado com sucesso
+4:18:22 PM [whatsapp] WebSocket server initialized
+4:18:22 PM [express] Inicializando em modo de produção
+4:18:23 PM [whatsapp] Usando Chromium em: /usr/bin/chromium
+4:18:23 PM [express] serving on port 5000
+4:18:23 PM [whatsapp-chatbot] WhatsApp não está conectado. O chatbot não pode ser inicializado.
+4:18:23 PM [whatsapp-chatbot] Não foi possível inicializar o chatbot do WhatsApp
+Serving static login from path: /app/client/static-login.html
+User count: 1
+4:18:26 PM [express] GET /api/users/count 200 in 41ms :: {"count":1}
+User count: 1
+4:18:31 PM [express] GET /api/users/count 304 in 97ms :: {"count":1}
+4:18:31 PM [express] POST /api/login 401 in 10ms :: {"error":"Credenciais inválidas"}
+4:18:39 PM [whatsapp] QR Code received
+4:19:39 PM [whatsapp] QR Code received
+4:19:59 PM [whatsapp] QR Code received
+Serving static login from path: /app/client/static-login.html
+User count: 1
+4:20:11 PM [express] GET /api/users/count 200 in 19ms :: {"count":1}
+User count: 1
+4:20:18 PM [express] GET /api/users/count 304 in 3ms :: {"count":1}
+4:20:18 PM [express] POST /api/login 401 in 71ms :: {"error":"Credenciais inválidas"}
+4:20:19 PM [whatsapp] QR Code received
+wait-for-it: waiting 60 seconds for 185.173.110.61:5488
+wait-for-it: 185.173.110.61:5488 is available after 0 seconds
