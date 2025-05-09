@@ -92,7 +92,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Rota para resetar o usuário administrador (necessário para o ambiente de produção)
-  app.post("/api/reset-admin", async (req: Request, res: Response) => {
+  // Permitir tanto GET quanto POST para facilitar o acesso
+  app.all("/api/reset-admin", async (req: Request, res: Response) => {
     try {
       // Remover usuários existentes
       await pool.query('TRUNCATE TABLE "users" CASCADE');
