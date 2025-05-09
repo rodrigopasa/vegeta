@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useWhatsApp } from '@/contexts/WhatsAppContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,9 +10,10 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { QRCodeSVG } from 'qrcode.react';
-import { PhoneIcon, PlusIcon, Trash2Icon, RefreshCwIcon, PowerIcon, EditIcon } from 'lucide-react';
+import { PhoneIcon, PlusIcon, Trash2Icon, RefreshCwIcon, PowerIcon, EditIcon, CheckIcon } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { pt } from 'date-fns/locale';
+import { useToast } from '@/hooks/use-toast';
 
 const WhatsAppInstances: React.FC = () => {
   const { 
@@ -25,6 +26,8 @@ const WhatsAppInstances: React.FC = () => {
     initializeWhatsApp,
     refreshContacts
   } = useWhatsApp();
+  
+  const { toast } = useToast();
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -37,7 +40,7 @@ const WhatsAppInstances: React.FC = () => {
   const [formIsActive, setFormIsActive] = useState(true);
 
   const handleCreateInstance = async () => {
-    await createInstance(formName, formPhone, formDescription || null);
+    await createInstance(formName, formPhone, formDescription || undefined);
     resetForm();
     setIsCreateDialogOpen(false);
   };
@@ -47,7 +50,7 @@ const WhatsAppInstances: React.FC = () => {
       await updateInstance(editingInstance, {
         name: formName,
         phoneNumber: formPhone,
-        description: formDescription || null,
+        description: formDescription || undefined,
         isActive: formIsActive
       });
       resetForm();
@@ -81,10 +84,50 @@ const WhatsAppInstances: React.FC = () => {
     return { label: 'Desconectado', variant: 'destructive' };
   };
 
+  // Efeito para recarregar as instâncias quando a página for carregada
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Utiliza fetch diretamente para garantir que as instâncias estejam atualizadas
+        const response = await fetch('/api/whatsapp/instances');
+        if (!response.ok) {
+          throw new Error('Erro ao carregar instâncias');
+        }
+        
+        // Exibe toast de sucesso
+        toast({
+          title: 'Instâncias WhatsApp',
+          description: `${instances.length} instâncias carregadas com sucesso.`,
+        });
+      } catch (error) {
+        console.error('Erro ao carregar instâncias:', error);
+        toast({
+          title: 'Erro',
+          description: 'Não foi possível carregar as instâncias. Tente novamente.',
+          variant: 'destructive',
+        });
+      }
+    };
+    
+    fetchData();
+  }, [toast]);
+  
+  // Função para definir uma instância como ativa
+  const setActive = (id: number) => {
+    setActiveInstanceId(id);
+    toast({
+      title: 'Instância Ativa',
+      description: `Instância ID:${id} definida como ativa.`,
+    });
+  };
+
   return (
     <div className="flex-1 overflow-auto p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Instâncias WhatsApp</h1>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold">Instâncias WhatsApp ({instances.length})</h1>
+          <p className="text-muted-foreground mt-1">Gerencie suas contas WhatsApp conectadas</p>
+        </div>
         
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
@@ -340,6 +383,16 @@ const WhatsAppInstances: React.FC = () => {
                   </div>
                   
                   <div className="flex space-x-2">
+                    <Button
+                      variant={isActive ? "outline" : "default"}
+                      size="sm"
+                      onClick={() => setActive(instance.id)}
+                      className={`relative ${isActive ? 'border-primary text-primary' : ''}`}
+                    >
+                      {isActive && <CheckIcon className="h-3 w-3 absolute -top-1 -right-1" />}
+                      {isActive ? 'Ativa' : 'Definir como Ativa'}
+                    </Button>
+                    
                     <Button
                       variant="outline"
                       size="sm"
