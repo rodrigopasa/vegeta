@@ -18,7 +18,6 @@ import { useToast } from '@/hooks/use-toast';
 const WhatsAppInstances: React.FC = () => {
   const { 
     instances,
-    setInstances, 
     activeInstanceId, 
     setActiveInstanceId, 
     createInstance,

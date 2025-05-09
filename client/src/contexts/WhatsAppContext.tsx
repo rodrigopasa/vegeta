@@ -46,6 +46,7 @@ interface Message {
 
 interface WhatsAppContextType {
   instances: WhatsAppInstance[];
+  setInstances: React.Dispatch<React.SetStateAction<WhatsAppInstance[]>>;
   activeInstanceId: number | null;
   setActiveInstanceId: (id: number | null) => void;
   isConnected: boolean;
@@ -650,6 +651,7 @@ export const WhatsAppProvider: React.FC<WhatsAppProviderProps> = ({ children }) 
   return (
     <WhatsAppContext.Provider value={{
       instances,
+      setInstances,
       activeInstanceId,
       setActiveInstanceId,
       isConnected,
